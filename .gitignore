@@ -14,3 +14,7 @@ coverage/
 .env*
 !.env.example
 tsconfig.tsbuildinfo
+tmp/
+outputs/submission/open-door-tokyo-deck/
+outputs/submission/*.inspect.ndjson
+outputs/submission/*-montage.jpg
