@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "brief": {
+    "cardId": "demo-cafe",
+    "name": "CAFÉ OPEN DOOR",
+    "category": "cafe",
+    "sourceUrl": "https://example.com/cafe",
+    "languages": ["ja", "en"],
+    "createdAt": "2026-07-25T01:00:00.000Z"
+  },
+  "state": "review",
+  "items": [
+    {
+      "id": "step-presence",
+      "field": "entrance.step_presence",
+      "section": "entrance",
+      "label": { "ja": "入口の段差", "en": "Entrance step" },
+      "description": {
+        "ja": "入口に1段の段差が見えます",
+        "en": "One step is visible at the entrance"
+      },
+      "value": true,
+      "unit": "step",
+      "status": "ai_observed",
+      "confidence": 0.96,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
+        }
+      ],
+      "requiredForPublish": true,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "step-height",
+      "field": "entrance.step_height_cm",
+      "section": "entrance",
+      "label": { "ja": "段差の高さ", "en": "Step height" },
+      "description": {
+        "ja": "映像のみでは測定できません",
+        "en": "This cannot be measured reliably from video alone"
+      },
+      "value": null,
+      "unit": "cm",
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-02",
+          "tSec": 7,
+          "capturedAt": "2026-07-25T01:00:07.000Z"
+        }
+      ],
+      "staffPrompt": {
+        "ja": "メジャーで垂直の高さを測ってください",
+        "en": "Measure the vertical rise with a tape measure"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "door-width",
+      "field": "entrance.door_width_cm",
+      "section": "entrance",
+      "label": { "ja": "入口幅", "en": "Doorway width" },
+      "description": {
+        "ja": "最も狭い部分を測ってください",
+        "en": "Measure the narrowest clear opening"
+      },
+      "value": null,
+      "unit": "cm",
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-03",
+          "tSec": 11,
+          "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "staffPrompt": {
+        "ja": "ドアを開けた状態で最も狭い部分を測ってください",
+        "en": "Measure the narrowest opening with the door open"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "door-type",
+      "field": "entrance.door_type",
+      "section": "entrance",
+      "label": { "ja": "ドアの種類", "en": "Door type" },
+      "description": {
+        "ja": "手前に引いて開ける片開きドアです",
+        "en": "A single hinged door that pulls outward"
+      },
+      "value": "single_hinged_pull",
+      "status": "ai_observed",
+      "confidence": 0.91,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-03",
+          "tSec": 11,
+          "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "ramp",
+      "field": "entrance.portable_ramp",
+      "section": "entrance",
+      "label": { "ja": "簡易スロープ", "en": "Portable ramp" },
+      "description": {
+        "ja": "音声では「あり」。映像には映っていません",
+        "en": "Staff audio says one is available, but it is not visible"
+      },
+      "value": true,
+      "status": "staff_stated",
+      "confidence": 0.72,
+      "provenance": [
+        {
+          "kind": "audio_transcript",
+          "transcriptSpan": {
+            "startSec": 5,
+            "endSec": 9,
+            "text": "スロープはレジの後ろに置いてあります"
+          },
+          "capturedAt": "2026-07-25T01:00:09.000Z"
+        }
+      ],
+      "staffPrompt": {
+        "ja": "簡易スロープの保管場所と利用方法を確認してください",
+        "en": "Confirm the ramp location and how visitors request it"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "ramp-help",
+      "field": "entrance.ramp_assistance",
+      "section": "entrance",
+      "label": {
+        "ja": "スロープの利用方法",
+        "en": "How to request the ramp"
+      },
+      "description": {
+        "ja": "利用時はスタッフへの声掛けが必要です",
+        "en": "Ask a staff member when you need the ramp"
+      },
+      "value": "ask_staff",
+      "status": "staff_stated",
+      "confidence": 0.78,
+      "provenance": [
+        {
+          "kind": "audio_transcript",
+          "transcriptSpan": {
+            "startSec": 9,
+            "endSec": 12,
+            "text": "使用するときはスタッフを呼んでください"
+          },
+          "capturedAt": "2026-07-25T01:00:12.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "tables",
+      "field": "path_to_seat.table_count",
+      "section": "path_to_seat",
+      "label": { "ja": "テーブル席", "en": "Table seating" },
+      "description": {
+        "ja": "テーブル席が2卓見えます",
+        "en": "Two tables are visible"
+      },
+      "value": 2,
+      "status": "ai_observed",
+      "confidence": 0.94,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-04",
+          "tSec": 16,
+          "capturedAt": "2026-07-25T01:00:16.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "chairs",
+      "field": "path_to_seat.chairs_movable",
+      "section": "path_to_seat",
+      "label": { "ja": "椅子の移動", "en": "Movable chairs" },
+      "description": {
+        "ja": "椅子を移動できるか確認が必要です",
+        "en": "Staff confirmation is needed"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "椅子を移動できますか",
+        "en": "Can the chairs be moved?"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "passage",
+      "field": "path_to_seat.narrowest_passage_cm",
+      "section": "path_to_seat",
+      "label": { "ja": "最も狭い通路", "en": "Narrowest passage" },
+      "description": {
+        "ja": "映像のみでは幅を測定できません",
+        "en": "The width cannot be measured reliably from video"
+      },
+      "value": null,
+      "unit": "cm",
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-04",
+          "tSec": 16,
+          "capturedAt": "2026-07-25T01:00:16.000Z"
+        }
+      ],
+      "staffPrompt": {
+        "ja": "家具間の最も狭い通路幅を測ってください",
+        "en": "Measure the narrowest passage between furniture"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "writing",
+      "field": "communication.writing_support",
+      "section": "communication",
+      "label": { "ja": "筆談対応", "en": "Written communication" },
+      "description": {
+        "ja": "店舗スタッフの回答が必要です",
+        "en": "Staff confirmation is needed"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "筆談での対応はできますか",
+        "en": "Can staff communicate in writing?"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "english-menu",
+      "field": "communication.english_menu",
+      "section": "communication",
+      "label": { "ja": "英語メニュー", "en": "English menu" },
+      "description": {
+        "ja": "店舗スタッフの回答が必要です",
+        "en": "Staff confirmation is needed"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "英語メニューはありますか",
+        "en": "Is an English menu available?"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom",
+      "field": "restroom.interior_equipment",
+      "section": "restroom",
+      "label": { "ja": "トイレ内部の設備", "en": "Restroom equipment" },
+      "description": {
+        "ja": "映像に含まれておらず未確認です",
+        "en": "Not shown in the video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "turning-space",
+      "field": "path_to_seat.turning_space",
+      "section": "path_to_seat",
+      "label": {
+        "ja": "店内での車椅子方向転換スペース",
+        "en": "Wheelchair turning space inside"
+      },
+      "description": {
+        "ja": "映像だけでは判断できず未確認です",
+        "en": "This cannot be determined from the video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    }
+  ],
+  "unknowns": [
+    "entrance.step_height_cm",
+    "entrance.door_width_cm",
+    "path_to_seat.chairs_movable",
+    "path_to_seat.narrowest_passage_cm",
+    "communication.writing_support",
+    "communication.english_menu",
+    "restroom.interior_equipment",
+    "path_to_seat.turning_space"
+  ],
+  "conflicts": [],
+  "safetyAudit": {
+    "passedDeterministic": true,
+    "blocked": [
+      {
+        "text": "車椅子で利用可能",
+        "rule": "wheelchair_usable_ja",
+        "reason": {
+          "ja": "入口に段差があり、通路幅と方向転換スペースが確認されていないため、包括的な利用可能判定はできません。",
+          "en": "A universal usability claim is unsupported because the entrance has a step and passage width and turning space are unverified."
+        },
+        "suggestion": {
+          "ja": "入口に1段の段差があります。簡易スロープの利用にはスタッフへの声掛けが必要です。",
+          "en": "There is one step at the entrance. Ask a staff member when you need the portable ramp."
+        },
+        "resolved": false
+      }
+    ],
+    "llmVerdicts": [
+      {
+        "claim": "車椅子で利用可能",
+        "verdict": "unsupported",
+        "reason": "入口に段差があり、通路幅と方向転換スペースが確認されていません。",
+        "rewrite": {
+          "ja": "入口に1段の段差があります。簡易スロープの利用にはスタッフへの声掛けが必要です。",
+          "en": "There is one step at the entrance. Ask a staff member when you need the portable ramp."
+        }
+      }
+    ],
+    "auditedBy": {
+      "deterministic": true,
+      "gmi": "fallback"
+    },
+    "auditedAt": "2026-07-25T01:00:20.000Z"
+  },
+  "traces": [],
+  "frames": [
+    {
+      "frameId": "frame-01",
+      "tSec": 4,
+      "url": "/demo/frames/01-entrance.png",
+      "alt": {
+        "ja": "紺色のドアと1段の入口がある架空カフェの外観",
+        "en": "Exterior of the fictional cafe with a navy door and one entrance step"
+      }
+    },
+    {
+      "frameId": "frame-02",
+      "tSec": 7,
+      "url": "/demo/frames/02-step-measurement.png",
+      "alt": {
+        "ja": "入口の段差をメジャーで測っている記録フレーム",
+        "en": "Documentation frame showing the entrance step being measured"
+      }
+    },
+    {
+      "frameId": "frame-03",
+      "tSec": 11,
+      "url": "/demo/frames/03-door-width.png",
+      "alt": {
+        "ja": "開いた入口の最も狭い部分をメジャーで測っている記録フレーム",
+        "en": "Documentation frame showing the narrowest doorway opening being measured"
+      }
+    },
+    {
+      "frameId": "frame-04",
+      "tSec": 16,
+      "url": "/demo/frames/04-seating.png",
+      "alt": {
+        "ja": "入口からテーブル席とカウンター席までの店内経路",
+        "en": "Interior route from the entrance to table and counter seating"
+      }
+    }
+  ],
+  "publishedAt": null,
+  "lastVerifiedAt": null,
+  "updatedAt": "2026-07-25T01:00:20.000Z"
+}

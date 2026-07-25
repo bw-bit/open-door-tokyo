@@ -1,0 +1,16 @@
+{
+  "mode": "fallback",
+  "language": "ja",
+  "segments": [
+    {
+      "startSec": 5,
+      "endSec": 9,
+      "text": "スロープはレジの後ろに置いてあります。"
+    },
+    {
+      "startSec": 9,
+      "endSec": 12,
+      "text": "使用するときはスタッフを呼んでください。"
+    }
+  ]
+}

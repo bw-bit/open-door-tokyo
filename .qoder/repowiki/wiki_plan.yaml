@@ -1,0 +1,38 @@
+version: 1
+title: OPEN DOOR TOKYO Repo Wiki
+pages:
+  - slug: product-thesis
+    title: Product Thesis
+    sources:
+      - README.md
+      - docs/OPUS5_IMPLEMENTATION_PLAN.md
+  - slug: agent-state-machine
+    title: Agent State Machine
+    sources:
+      - lib/status.ts
+      - lib/types.ts
+      - tests/state.test.ts
+  - slug: evidence-provenance
+    title: Evidence and Provenance Model
+    sources:
+      - lib/types.ts
+      - fixtures/demo-analysis.json
+      - fixtures/demo-published.json
+  - slug: safety-human-approval
+    title: Safety and Human Approval
+    sources:
+      - lib/safety/deterministic.ts
+      - app/api/publish/route.ts
+      - tests/safety.test.ts
+      - tests/e2e/demo-flow.spec.ts
+  - slug: sponsor-integrations
+    title: Sponsor Integrations
+    sources:
+      - docs/SPONSOR_INTEGRATIONS.md
+      - lib/providers
+  - slug: demo-recovery
+    title: Demo and Failure Recovery
+    sources:
+      - docs/DEMO_SCRIPT.md
+      - docs/RUNBOOK.md
+

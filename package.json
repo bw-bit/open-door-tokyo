@@ -1,0 +1,44 @@
+{
+  "name": "open-door-tokyo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:live": "scripts/with-secrets.sh next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:live": "scripts/with-secrets.sh vitest run --config vitest.live.config.ts",
+    "preflight:readonly": "scripts/run-readonly-preflights.sh",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "verify": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@daytona/sdk": "0.200.1",
+    "@nosana/kit": "2.7.0",
+    "@vercel/blob": "2.6.1",
+    "lucide-react": "0.468.0",
+    "next": "15.5.21",
+    "qrcode": "1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "22.15.3",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "@opentelemetry/propagator-jaeger": "2.10.0",
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
+  }
+}
