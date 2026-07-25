@@ -2113,6 +2113,11 @@ video {
   background: #fff0c9;
 }
 
+.state-partial .overview-state {
+  color: #43545c;
+  background: #eef3f4;
+}
+
 .state-unknown .overview-state {
   color: #667178;
   background: #e9edef;

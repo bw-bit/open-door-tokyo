@@ -2,7 +2,7 @@ import { isReferenceEstimate } from "@/lib/reference-estimate";
 import type { AccessCard, EvidenceItem } from "@/lib/types";
 
 type Lang = "ja" | "en";
-type OverviewState = "information" | "estimate" | "unknown";
+type OverviewState = "information" | "estimate" | "partial" | "unknown";
 type Pictogram =
   | "wheelchair"
   | "stroller"
@@ -45,7 +45,9 @@ const overviewItems: OverviewItem[] = [
       "entrance.step_presence",
       "entrance.step_height_cm",
       "entrance.door_type",
-      "path_to_seat.floor_surface"
+      "entrance.glass_visibility",
+      "entrance.lighting",
+      "entrance.signage"
     ]
   },
   {
@@ -67,26 +69,31 @@ const overviewItems: OverviewItem[] = [
 
 function stateFor(items: EvidenceItem[], fields: string[]): OverviewState {
   const relevant = items.filter((item) => fields.includes(item.field));
+  const known = relevant.filter((item) => item.status !== "unknown");
+  if (known.length === 0) return "unknown";
+  if (known.length < fields.length) return "partial";
   if (
-    relevant.some(
+    known.some(
       (item) => item.status !== "unknown" && !isReferenceEstimate(item)
     )
   ) {
     return "information";
   }
-  if (relevant.some((item) => isReferenceEstimate(item))) return "estimate";
+  if (known.some((item) => isReferenceEstimate(item))) return "estimate";
   return "unknown";
 }
 
 const stateLabels: Record<OverviewState, { ja: string; en: string }> = {
-  information: { ja: "情報あり", en: "Information available" },
-  estimate: { ja: "参考推定あり", en: "Reference estimate" },
-  unknown: { ja: "未確認", en: "Not yet verified" }
+  information: { ja: "動画・店舗情報あり", en: "Video / venue information" },
+  estimate: { ja: "動画から推定", en: "Estimated from video" },
+  partial: { ja: "一部情報あり", en: "Partial information" },
+  unknown: { ja: "要確認", en: "Needs confirmation" }
 };
 
 const stateMarks: Record<OverviewState, string> = {
   information: "●",
   estimate: "≈",
+  partial: "△",
   unknown: "?"
 };
 

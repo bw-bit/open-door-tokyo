@@ -84,7 +84,7 @@ export function ProviderTraceRail({
         })}
       </div>
       <p className="trace-note">
-        APIキー未設定時は状態を明示。サンプルは検証済みデモ、実動画は未確認として安全側へ倒します。
+        Qwenが入口情報を動画から先回りして抽出。推定・実測・店舗確認を分け、読み取れない項目だけを要確認にします。
       </p>
     </aside>
   );

@@ -10,6 +10,7 @@ import {
   referenceEstimateDescription
 } from "../reference-estimate";
 import type { AccessCard, AnalyzeRequest, ProviderResult } from "../types";
+import { validateQwenVideoDataUrl } from "../video-upload";
 import {
   type ChatContentPart,
   openAICompatibleChat,
@@ -24,8 +25,16 @@ import {
 const ACCESS_FIELDS = [
   "entrance.step_presence",
   "entrance.step_height_cm",
+  "entrance.threshold_height_cm",
   "entrance.door_width_cm",
   "entrance.door_type",
+  "entrance.door_operation",
+  "entrance.approach_space",
+  "entrance.handle_type",
+  "entrance.obstruction",
+  "entrance.glass_visibility",
+  "entrance.lighting",
+  "entrance.signage",
   "entrance.portable_ramp",
   "entrance.ramp_assistance",
   "path_to_seat.table_count",
@@ -34,21 +43,32 @@ const ACCESS_FIELDS = [
   "communication.writing_support",
   "communication.english_menu",
   "restroom.interior_equipment",
+  "restroom.signage_type",
+  "restroom.entrance_threshold_height_cm",
+  "restroom.path_clear_width_cm",
+  "restroom.visible_fixture_types",
+  "restroom.grab_bars",
+  "restroom.accessible_stall",
+  "restroom.diaper_changing_station",
+  "restroom.emergency_call_button",
+  "restroom.sink_approach_clearance",
+  "restroom.turning_space",
   "path_to_seat.turning_space"
 ] as const;
 
 const STAFF_ONLY_FIELDS = new Set<string>([
   "entrance.step_height_cm",
+  "entrance.threshold_height_cm",
   "entrance.door_width_cm",
   "entrance.ramp_assistance",
   "path_to_seat.narrowest_passage_cm",
   "communication.writing_support",
-  "path_to_seat.turning_space"
+  "restroom.entrance_threshold_height_cm",
+  "restroom.path_clear_width_cm",
 ]);
 
-const extractionSchema = z.object({
-  observations: z.array(
-    z.object({
+const observationSchema = z
+  .object({
       field: z.enum(ACCESS_FIELDS),
       description_ja: z.string().min(1).max(240),
       description_en: z.string().min(1).max(240),
@@ -65,17 +85,15 @@ const extractionSchema = z.object({
         .strict()
         .nullable()
         .optional(),
+      observed_value: z
+        .union([z.string().max(120), z.number(), z.boolean()])
+        .nullable()
+        .optional(),
       confidence: z.number().min(0).max(1),
       frame_id: z.string().nullable()
-    }).strict()
-  ).max(ACCESS_FIELDS.length),
-  unknowns: z.array(z.enum(ACCESS_FIELDS)).max(ACCESS_FIELDS.length),
-  proposed_claims: z.array(z.string().max(240)).max(ACCESS_FIELDS.length)
-}).strict().superRefine((value, context) => {
-  if (value.observations.length === 0 && value.unknowns.length === 0) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: "empty extraction" });
-  }
-  for (const observation of value.observations) {
+    })
+  .strict()
+  .superRefine((observation, context) => {
     if (
       observation.status === "unknown" &&
       (observation.frame_id !== null || observation.confidence !== 0)
@@ -92,7 +110,7 @@ const extractionSchema = z.object({
         !observation.frame_id ||
         !canUseReferenceEstimate(observation.field) ||
         !estimate ||
-        estimate.max - estimate.min < 1 ||
+        estimate.max - estimate.min < 2 ||
         observation.confidence > 0.75
       ) {
         context.addIssue({
@@ -106,26 +124,69 @@ const extractionSchema = z.object({
         message: "visible fact cannot contain an estimate range"
       });
     }
+  });
+
+const extractionEnvelopeSchema = z
+  .object({
+    observations: z.array(z.unknown()).max(ACCESS_FIELDS.length),
+    unknowns: z.array(z.enum(ACCESS_FIELDS)).max(ACCESS_FIELDS.length),
+    proposed_claims: z
+      .array(z.string().max(240))
+      .max(ACCESS_FIELDS.length)
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.observations.length === 0 && value.unknowns.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "empty extraction"
+      });
+    }
+  });
+
+function validObservations(
+  extraction: z.infer<typeof extractionEnvelopeSchema>
+): Array<z.infer<typeof observationSchema>> {
+  const parsed = extraction.observations.flatMap((candidate) => {
+    const result = observationSchema.safeParse(candidate);
+    return result.success ? [result.data] : [];
+  });
+  const counts = new Map<string, number>();
+  for (const observation of parsed) {
+    counts.set(observation.field, (counts.get(observation.field) ?? 0) + 1);
   }
-  const observationFields = value.observations.map(({ field }) => field);
-  if (new Set(observationFields).size !== observationFields.length) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: "duplicate field" });
-  }
-  const unknowns = new Set(value.unknowns);
-  if (observationFields.some((field) => unknowns.has(field))) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "field cannot be observed and unknown"
-    });
-  }
-});
+  const unknowns = new Set<string>(extraction.unknowns);
+  return parsed.filter(
+    (observation) =>
+      counts.get(observation.field) === 1 && !unknowns.has(observation.field)
+  );
+}
 
 const DEFAULT_QWEN_BASE_URL =
   "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
-const DEFAULT_QWEN_MODEL = "qwen3.6-flash";
+const DEFAULT_QWEN_MODEL = "qwen3.7-plus";
 const DEFAULT_QWEN_REGION = "intl";
-const QWEN_INPUT_USD_PER_MILLION_TOKENS = 0.25;
-const QWEN_OUTPUT_USD_PER_MILLION_TOKENS = 1.5;
+const QWEN_MAX_OUTPUT_TOKENS = 2_400;
+const QWEN_PRICING: Record<
+  string,
+  { inputUsdPerMillion: number; outputUsdPerMillion: number; inputTokenLimit: number }
+> = {
+  "qwen3.7-plus": {
+    inputUsdPerMillion: 0.4,
+    outputUsdPerMillion: 1.6,
+    inputTokenLimit: 256_000
+  },
+  "qwen3.7-plus-2026-05-26": {
+    inputUsdPerMillion: 0.4,
+    outputUsdPerMillion: 1.6,
+    inputTokenLimit: 256_000
+  },
+  "qwen3.6-flash": {
+    inputUsdPerMillion: 0.25,
+    outputUsdPerMillion: 1.5,
+    inputTokenLimit: 256_000
+  }
+};
 
 function reconciledQwenCost(input: {
   model: string;
@@ -134,7 +195,8 @@ function reconciledQwenCost(input: {
   totalTokens: number | undefined;
   reservedMaxCostUsd: number;
 }): number | null {
-  if (input.model !== DEFAULT_QWEN_MODEL) return null;
+  const pricing = QWEN_PRICING[input.model];
+  if (!pricing) return null;
   const { promptTokens, completionTokens, totalTokens } = input;
   if (
     !Number.isSafeInteger(promptTokens) ||
@@ -143,13 +205,16 @@ function reconciledQwenCost(input: {
     promptTokens! < 0 ||
     completionTokens! < 0 ||
     totalTokens! <= 0 ||
-    totalTokens! > 256_000 ||
+    promptTokens! > pricing.inputTokenLimit ||
+    completionTokens! > QWEN_MAX_OUTPUT_TOKENS ||
+    totalTokens! > pricing.inputTokenLimit + QWEN_MAX_OUTPUT_TOKENS ||
     promptTokens! + completionTokens! !== totalTokens
   ) return null;
-  const cost =
-    (promptTokens! * QWEN_INPUT_USD_PER_MILLION_TOKENS +
-      completionTokens! * QWEN_OUTPUT_USD_PER_MILLION_TOKENS) /
-    1_000_000;
+  const cost = Number((
+    (promptTokens! * pricing.inputUsdPerMillion +
+      completionTokens! * pricing.outputUsdPerMillion) /
+    1_000_000
+  ).toFixed(12));
   return Number.isFinite(cost) &&
     cost >= 0 &&
     cost <= input.reservedMaxCostUsd
@@ -179,8 +244,8 @@ function unknownCardForRequest(request: AnalyzeRequest): AccessCard {
   const card = getDemoAnalysisCard();
   for (const item of card.items) {
     item.description = {
-      ja: "映像からは確認できていません",
-      en: "Not verified from this video"
+      ja: "この短い映像では確認できていないため要確認です",
+      en: "Needs confirmation because it is not visible in this short video"
     };
     item.value = null;
     item.status = "unknown";
@@ -218,8 +283,8 @@ export async function analyzeWithQwen(
   const startedAt = new Date().toISOString();
   const started = Date.now();
   const task = {
-    ja: "動画フレームから観察事実と未確認事項を構造化",
-    en: "Structure observed facts and unknowns from video frames"
+    ja: "動画フレームから来店前に必要な入口・トイレ情報を先回りして構造化",
+    en: "Proactively structure entrance and restroom information visitors need from video frames"
   };
 
   const apiKey = process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY;
@@ -257,7 +322,7 @@ export async function analyzeWithQwen(
       trace: providerTrace("qwen", "not_configured", task, startedAt, Date.now() - started, false, {
         errorCode: "config_missing",
         validation: "not_run",
-        detail: { ja: "API未設定のため、実動画の事実はすべて未確認です", en: "API is not configured; upload facts remain unknown" }
+        detail: { ja: "API未設定のため、実動画の事実はすべて要確認です", en: "API is not configured; upload facts need confirmation" }
       })
     };
   }
@@ -269,6 +334,16 @@ export async function analyzeWithQwen(
     if (request.frames.length > 4) throw new ProviderCallError("payload_too_large");
     if (requestFrames(request).length === 0) {
       throw new ProviderCallError("schema_invalid");
+    }
+    if (request.videoDataUrl) {
+      const videoValidation = validateQwenVideoDataUrl(request.videoDataUrl);
+      if (videoValidation !== "ok") {
+        throw new ProviderCallError(
+          videoValidation === "payload_too_large"
+            ? "payload_too_large"
+            : "schema_invalid"
+        );
+      }
     }
     const content: ChatContentPart[] = [
       {
@@ -287,7 +362,29 @@ export async function analyzeWithQwen(
           exact_measurement_fields: Array.from(STAFF_ONLY_FIELDS),
           reference_estimate_fields: ACCESS_FIELDS.filter((field) =>
             canUseReferenceEstimate(field)
-          )
+          ),
+          visitor_questions_to_answer_first: [
+            "Is the door automatic, sliding, or hinged?",
+            "How does it open and in which direction?",
+            "What is the estimated clear opening width?",
+            "Is a threshold or step visible and what is its estimated range?",
+            "Is there visible approach or turning space?",
+            "What handle or opening control is visible?",
+            "Are there visible obstructions?",
+            "Is glass easy to perceive?",
+            "How is the entrance lighting?",
+            "Is entrance signage visible?",
+            "When a restroom is shown, what restroom type or signage is visibly indicated?",
+            "What floor transition or threshold is visible at the restroom entrance, and what is its conservative estimated range?",
+            "What is the conservative estimated clear width of the visible route into or within the restroom?",
+            "Which fixture types are directly visible, such as toilet, urinal, or sink?",
+            "Which grab bars are directly visible and where are they positioned?",
+            "Is an accessible-stall sign or a clearly marked accessible stall directly visible?",
+            "Is a diaper-changing station directly visible?",
+            "Is an emergency call button or cord directly visible?",
+            "What sink approach or under-sink clearance is directly visible?",
+            "What turning or open floor space is directly visible?"
+          ]
         })
       },
       ...request.frames.flatMap<ChatContentPart>((frame) => {
@@ -302,7 +399,16 @@ export async function analyzeWithQwen(
         ];
       })
     ];
-    const payloadCap = Number(process.env.QWEN_MAX_PAYLOAD_BYTES ?? 8_000_000);
+    if (request.videoDataUrl) {
+      content.splice(1, 0, {
+        type: "video_url",
+        video_url: { url: request.videoDataUrl },
+        fps: 1
+      });
+    }
+    const payloadCap = Number(
+      process.env.QWEN_MAX_PAYLOAD_BYTES ?? 22_500_000
+    );
     const payloadBytes = new TextEncoder().encode(
       JSON.stringify(content)
     ).byteLength;
@@ -328,7 +434,7 @@ export async function analyzeWithQwen(
       baseUrl,
       apiKey,
       model,
-      maxTokens: 768,
+      maxTokens: QWEN_MAX_OUTPUT_TOKENS,
       enableThinking: false,
       extraHeaders: workspaceId
         ? { "X-DashScope-WorkSpace": workspaceId }
@@ -338,7 +444,7 @@ export async function analyzeWithQwen(
         {
           role: "system",
           content:
-            'Return JSON only: {"observations":[{"field":"allowed field","description_ja":"short description","description_en":"short description","status":"ai_observed","observation_type":"visible_fact or reference_estimate","estimate_range_cm":null or {"min":3,"max":5},"confidence":0.0,"frame_id":"exact frame id"}],"unknowns":["allowed field"],"proposed_claims":[]}. Use only allowed fields and exact frame ids. Directly visible non-measurement facts use visible_fact and no range. For reference_estimate_fields only, you may provide a deliberately conservative width-bearing approximate range in centimeters when the frame has enough visual context; never provide a single exact number. A reference estimate must cite one exact frame, have min < max with at least 1 cm width, confidence <= 0.75, and is not a measured fact. If visual context is insufficient, put the field in unknowns. Never estimate assistance, communication service, turning suitability, certification, legal compliance, safety, or wheelchair usability. Never decide whether a wheelchair user can use the venue. proposed_claims must be empty.'
+            'Return JSON only: {"observations":[{"field":"allowed field","description_ja":"short concrete description","description_en":"short concrete description","status":"ai_observed","observation_type":"visible_fact or reference_estimate","estimate_range_cm":null or {"min":3,"max":5},"observed_value":"short structured value, number, boolean, or null","confidence":0.0,"frame_id":"exact frame id"}],"unknowns":["allowed field"],"proposed_claims":[]}. Proactively answer what a visitor needs before arriving. Analyze door type (automatic/sliding/hinged/other), opening method and direction, visible approach or turning layout, handle/control, obstructions, glass visibility markers, lighting, and signage whenever inferable. When any supplied frame shows a restroom, prioritize restroom.signage_type, restroom.entrance_threshold_height_cm, restroom.path_clear_width_cm, restroom.visible_fixture_types, restroom.grab_bars, restroom.accessible_stall, restroom.diaper_changing_station, restroom.emergency_call_button, restroom.sink_approach_clearance, and restroom.turning_space. For every observed restroom visible_fact, return a concise structured observed_value and cite the exact frame_id that proves it. Describe only what is directly visible: signage or type, visible fixtures, the number and position of grab bars, marked accessible-stall evidence, changing station, emergency control, sink approach, and open floor layout. A short video not showing an item is not evidence that the item is unavailable: return unknown, never false, none, absent, unavailable, or no, unless the relevant feature itself is directly and unambiguously shown. Do not turn an accessible symbol, large stall, grab bar, or open area into a certification or usability conclusion. Use only allowed fields and exact frame ids. Directly visible or visually inferable non-measurement facts use visible_fact and no range. For reference_estimate_fields, provide a deliberately conservative approximate range in centimeters whenever the frame has usable visual context; never provide a single exact number. A reference estimate must cite one exact frame, have min < max with at least 2 cm width (use a wider range when visual scale is weak), confidence <= 0.75, and is not a measured fact. Use unknown only when the relevant area is unreadable or not shown. Do not mark a field unknown merely because it was not physically measured. You may describe visible space and layout, but never claim it is sufficient for a specific person. Never infer staff assistance or communication services from appearance. Never claim certification, legal compliance, safety, or wheelchair usability. Never decide whether a wheelchair user can use the venue. proposed_claims must be empty.'
         },
         {
           role: "user",
@@ -355,7 +461,9 @@ export async function analyzeWithQwen(
       reservedMaxCostUsd
     });
     if (actualCostUsd === null) throw new ProviderCallError("semantic_invalid");
-    const extraction = extractionSchema.parse(safeJson(response.content));
+    const extraction = extractionEnvelopeSchema.parse(
+      safeJson(response.content)
+    );
     if (
       extraction.proposed_claims.length > 0 ||
       extraction.proposed_claims.some((claim) => auditClaim(claim))
@@ -364,14 +472,16 @@ export async function analyzeWithQwen(
     }
     const liveCard = unknownCardForRequest(request);
     let appliedObservations = 0;
-    for (const observation of extraction.observations) {
+    for (const observation of validObservations(extraction)) {
       const item = liveCard.items.find(
         (candidate) => candidate.field === observation.field
       );
       if (!item) continue;
       if (
         auditClaim(observation.description_ja) ||
-        auditClaim(observation.description_en)
+        auditClaim(observation.description_en) ||
+        (typeof observation.observed_value === "string" &&
+          auditClaim(observation.observed_value))
       ) throw new ProviderCallError("semantic_invalid");
       if (
         observation.status === "ai_observed" &&
@@ -402,6 +512,9 @@ export async function analyzeWithQwen(
           ja: observation.description_ja,
           en: observation.description_en
         };
+        item.value =
+          observation.observed_value ??
+          observation.description_ja;
       }
       item.status = observation.status;
       item.confidence =
@@ -471,7 +584,7 @@ export async function analyzeWithQwen(
           errorCode: closedError(error),
           validation: "failed",
           detail: {
-            ja: "API応答を検証できなかったため、実動画の事実はすべて未確認として継続",
+            ja: "API応答を検証できなかったため、実動画の事実はすべて要確認として継続",
             en: "The API response failed validation; all facts from this upload remain unknown"
           }
         }

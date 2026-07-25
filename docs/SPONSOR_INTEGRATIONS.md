@@ -17,6 +17,8 @@
   設定時だけ`X-DashScope-WorkSpace`を送る
 - 課金境界: 4画像、入力byte、output tokenをcall前に上限化し、既知価格による
   最大費用を永続予約できない場合は呼ばない
+- 現在の検証証跡: 実動画1回を`qwen3.6-flash`でguard後に実行し、`LIVE`、
+  schema・semantic validation pass。単なる再証明のためには再実行しない
 - 公式資料: <https://www.alibabacloud.com/help/en/model-studio/qwen-vl-compatible-with-openai>
 
 ## GMI Cloud
@@ -28,6 +30,9 @@
 - 安全設計: 決定論ルールが先に必ず走り、GMI障害でも危険な断定を通さない
 - 環境変数: `GMI_API_KEY`, `GMI_MODEL`
 - 課金境界: 入力とoutput tokenを固定上限化し、1回最大費用の永続予約後だけ実行
+- 現在の検証証跡: Kimi K3をモデル一覧で確認。推論は2回失敗し、
+  採用可能なreview結果は0件。費用は過少申告を避けてUSD 0.10を保守的に使用済み
+  として扱い、追加retryはしない
 - 公式資料: <https://docs.gmicloud.ai/inference-engine/api-reference/llm-api-reference>
 
 ## ai&
@@ -37,6 +42,8 @@
 - API: `https://api.aiand.com/v1/chat/completions`
 - 環境変数: `AIAND_API_KEY`, `AIAND_MODEL`
 - 課金境界: 確認済みfactsだけをbounded requestで渡し、永続予約後だけ実行
+- 現在の検証証跡: `deepseek-v4-flash`の固定64-token contractをlocal guard後に
+  1回実行し、schema・semantic validation pass。本番環境には未設定
 - 公式資料: <https://docs.aiand.com/ja/sdks/openai/>
 
 ## Daytona
@@ -49,6 +56,8 @@
 - ライフサイクル: sandboxは最大1、TTL 10分、code run 30秒、成功・失敗とも
   `finally`で削除。削除結果不明なら以後の作成を停止
 - 課金境界: resource profileと最大runtimeの費用を永続予約できない場合は作成しない
+- 現在の検証証跡: 最大USD 0.05を予約したlocal contractでephemeral sandboxを
+  1回実行。8 checks、live mode、削除完了を確認。本番環境には未設定
 - 公式資料: <https://www.daytona.io/docs/en/typescript-sdk/>
 
 ## Nosana
@@ -63,6 +72,7 @@
   接続proofでは絶対に呼ばない
 - 安全設計: 通常の解析UIは有料ジョブを投稿しない。既知quote、残存cap、
   provider hard limit、明示確認、冪等キーが一つでも欠けたら拒否
+- 現在の検証証跡: credits/read-only認証のみ。有料GPU jobは未投稿
 - 環境変数: `NOSANA_API_KEY`, `NOSANA_MARKET`, `NOSANA_JOB_ID`, `NOSANA_SUBMIT_SECRET`
 - 公式資料:
   - <https://learn.nosana.com/api/jobs.html>
@@ -80,6 +90,7 @@
   health entry、Agent TraceのLIVEとは主張しない
 - Cloud Agents、Agent SDK、Teams管理は別surface。本作では未実装なので
   それらのAPI統合を主張しない
+- 現在の検証証跡: Cloud Agents listのread-only認証のみ。runtime実行は未実施
 
 ## スポンサー・クレジットガード
 

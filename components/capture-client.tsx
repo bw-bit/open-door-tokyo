@@ -6,9 +6,11 @@ import type { ProviderId } from "@/lib/types";
 import {
   CLIENT_FRAME_PAYLOAD_TARGET_BYTES,
   MAX_VIDEO_FRAMES,
+  MAX_QWEN_VIDEO_SOURCE_BYTES,
   framePayloadBytes,
   representativeFrameTimes,
   validateRealUploadFrames,
+  validateQwenVideoDataUrl,
   validateSelectedVideo,
   type UploadFrame
 } from "@/lib/video-upload";
@@ -79,6 +81,29 @@ function canvasToDataUrl(canvas: HTMLCanvasElement, quality: number) {
       "image/jpeg",
       quality
     );
+  });
+}
+
+function directVideoDataUrl(file: File): Promise<string | undefined> {
+  if (file.size >= MAX_QWEN_VIDEO_SOURCE_BYTES) {
+    return Promise.resolve(undefined);
+  }
+  const inferredType = file.name.toLowerCase().endsWith(".mov")
+    ? "video/quicktime"
+    : "video/mp4";
+  const typedFile =
+    file.type.startsWith("video/") && file.type.length > "video/".length
+      ? file
+      : new Blob([file], { type: inferredType });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () =>
+      reject(new Error("動画データを読み取れませんでした"));
+    reader.onload = () => {
+      const value = String(reader.result);
+      resolve(validateQwenVideoDataUrl(value) === "ok" ? value : undefined);
+    };
+    reader.readAsDataURL(typedFile);
   });
 }
 
@@ -273,6 +298,9 @@ export function CaptureClient() {
             { frameId: "frame-03", tSec: 11, fixtureUrl: "/demo/frames/03-door-width.png" },
             { frameId: "frame-04", tSec: 16, fixtureUrl: "/demo/frames/04-seating.png" }
           ];
+      const videoDataUrl = selectedFile
+        ? await directVideoDataUrl(selectedFile)
+        : undefined;
       setCapturedFrames(
         frames.map((frame) => ({
           src:
@@ -300,6 +328,7 @@ export function CaptureClient() {
             ...listingLocation
           },
           frames,
+          ...(videoDataUrl ? { videoDataUrl } : {}),
           transcript: selectedFile
             ? ""
             : "スロープはレジの後ろに置いてあります。使用するときはスタッフを呼んでください。",
@@ -382,8 +411,9 @@ export function CaptureClient() {
           <em>行く前に分かる案内</em>になります。
         </h1>
         <p className="lede">
-          20秒の動画から、段差・入口の幅・通路・筆談などをAIが整理します。
-          分からない所は「未確認」のまま残し、電話せずに見られる案内にします。
+          20秒の動画から、ドアの種類と開け方・入口幅・段差や敷居・入口前の空間・
+          取っ手・障害物・明るさまでAIが先回りして整理します。映っていない所だけを
+          「要確認」とし、電話せずに見られる案内にします。
         </p>
 
         <div className="capture-card">
@@ -560,8 +590,8 @@ export function CaptureClient() {
             <li>設備は声に出して説明する</li>
           </ol>
           <p>
-            段差や幅は、映像から幅のある参考値を出すことがあります。実測ではないと
-            明記し、判断できない項目は「未確認」のまま残します。
+            段差や幅は、動画から幅のある推定範囲を出します。「動画から推定」と明記し、
+            店舗の実測値とは区別します。関連箇所が映らない項目だけを「要確認」にします。
           </p>
         </div>
       </section>

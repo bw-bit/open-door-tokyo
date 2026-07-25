@@ -13,7 +13,7 @@ AIエージェントです。店舗を「利用可能」と認定するのでは
 
 1. スマートフォンで撮影した MP4 / MOV の店舗ツアー動画を入力
 2. 最大4枚の代表フレームを端末内で抽出し、分析中・店舗確認・公開ページに同じ画像を表示
-3. Qwen 3.6 Flash VL が観察事実、幅付き参考推定、未確認事項を構造化
+3. Qwen 3.7 Plus が動画ファイルを直接理解し、観察事実、幅付き参考推定、未確認事項を構造化
 4. 接続時は Nosana がGPU証拠フレーム索引ジョブを実行・追跡
 5. 決定論ルールが「車椅子で利用可能」という根拠不足の断定を停止し、接続時は GMI Cloud が再監査
 6. 店舗スタッフがAIの記述を手動修正し、入口幅などを測定・確認
@@ -57,21 +57,21 @@ npm audit --omit=dev
 検証済み結果:
 
 - TypeScript: pass
-- 安全ルール・状態遷移・プロバイダー表示: 106 tests pass
+- 安全ルール・状態遷移・プロバイダー表示: 125 tests pass
 - ブラウザ一連操作: desktop / mobile、12 tests pass
   （モバイル専用2ケースはdesktop projectで意図的にskip）
 - Next.js production build: pass
 - production dependencies: 0 vulnerabilities
 - 読取接続: ai& / Daytona / GMI / Nosana / Qoder は認証成功
 - Qwen読取接続: 公式intl既定tupleでread-only `/models`認証に成功し、
-  `qwen3.6-flash`の利用可能性を確認
-- Qwen生成境界: 本番へ設定済み。10セントのアプリ割当、1リクエスト
-  最大1セント、同時実行1、再試行なしの永続クレジットガードで保護
+  `qwen3.7-plus`と固定版`qwen3.7-plus-2026-05-26`の利用可能性を確認
+- Qwen生成境界: 直接動画テストは1リクエスト最大11セント、同時実行1、
+  再試行なしの永続クレジットガードで保護
   （provider側のhard limitは利用不可のため、アプリ側ガードの範囲）
-- Qwen実動画proof: iPhone動画から抽出した4フレームを
-  `qwen3.6-flash`で1回だけ解析。`LIVE` / `SCHEMA + SEMANTIC PASS`、
-  5.161秒、再試行0。入口ドアの具体的観察1件だけを採用し、10項目を
-  `unknown`のまま保持。ガードは残り9枠・未精算0を確認
+- Qwen実動画proof: 提供されたトイレ動画を`video_url`で
+  `qwen3.7-plus`へ直接入力し、同時に4枚の証拠フレームを保存。
+  `LIVE` / `SCHEMA + SEMANTIC PASS`、22.247秒、再試行0。
+  表示、床切替、通路幅、設備、手すりの5件を根拠フレーム付きで採用
 
 ## データ安全性
 

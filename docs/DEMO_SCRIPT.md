@@ -14,9 +14,9 @@
 
 右側の Agent Trace を指す。
 
-> 本番の実動画ではQwen 3.6 Flash VLが最大4枚の代表フレームを解析します。今見せている再現可能な経路はVERIFIED SAMPLEです。未実行のNosana、GMI、ai&、DaytonaはNOT CONFIGUREDと正直に表示します。
+> Qwen 3.7 Plusへ動画ファイルを直接入力し、同時に4枚の代表フレームを証拠として保存します。今見せているのは、提供動画を実APIで解析した最新成功結果です。未実行のNosana、GMI、ai&、DaytonaはNOT CONFIGUREDと正直に表示します。
 
-> 提出前にiPhoneの実動画でも1回だけ実行し、LIVE、SCHEMA + SEMANTIC PASSを確認済みです。デモでは再課金せず、その成功録画を証拠として使います。
+> トイレ動画では表示、床の切り替わり、通路幅、見える設備、手すりの5件を抽出し、LIVE、SCHEMA + SEMANTIC PASSを確認済みです。デモでは再課金せず、その最新成功結果を使います。
 
 ## 0:40–1:15 Evidence Review
 

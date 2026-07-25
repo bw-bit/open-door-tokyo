@@ -3,7 +3,7 @@ import { guardStatus, reconcile, reserve } from "../lib/guard";
 
 const MODEL = "moonshotai/kimi-k3";
 const BASE_URL = "https://api.gmi-serving.com/v1";
-const IDEMPOTENCY_KEY = "gmi-kimi-k3-ui-review-20260725-v1";
+const IDEMPOTENCY_KEY = "gmi-kimi-k3-ui-review-20260725-v2";
 const MAX_COST_USD = 0.05;
 const INPUT_PRICE_PER_MILLION = 3;
 const OUTPUT_PRICE_PER_MILLION = 15;
@@ -74,7 +74,7 @@ try {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0,
-        max_tokens: 900,
+        max_tokens: 128,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -150,19 +150,18 @@ try {
   const promptTokens = nonNegativeInteger(payload.usage?.prompt_tokens);
   const completionTokens = nonNegativeInteger(payload.usage?.completion_tokens);
   const totalTokens = nonNegativeInteger(payload.usage?.total_tokens);
-  if (
-    promptTokens === null ||
-    completionTokens === null ||
-    totalTokens === null ||
-    promptTokens + completionTokens !== totalTokens
-  ) {
-    throw new Error("gmi_usage_unknown");
+  const usageKnown =
+    promptTokens !== null &&
+    completionTokens !== null &&
+    totalTokens !== null &&
+    promptTokens + completionTokens === totalTokens;
+  if (usageKnown) {
+    actualCostUsd =
+      (promptTokens * INPUT_PRICE_PER_MILLION +
+        completionTokens * OUTPUT_PRICE_PER_MILLION) /
+      1_000_000;
+    if (actualCostUsd > MAX_COST_USD) throw new Error("gmi_cost_exceeded");
   }
-  actualCostUsd =
-    (promptTokens * INPUT_PRICE_PER_MILLION +
-      completionTokens * OUTPUT_PRICE_PER_MILLION) /
-    1_000_000;
-  if (actualCostUsd > MAX_COST_USD) throw new Error("gmi_cost_exceeded");
   if (
     typeof payload.model !== "string" ||
     payload.model.toLowerCase() !== MODEL
@@ -178,8 +177,9 @@ try {
     provider: "GMI Cloud",
     model: payload.model,
     requestId: typeof payload.id === "string" ? payload.id : undefined,
-    usage: { promptTokens, completionTokens, totalTokens },
-    actualCostUsd: Number(actualCostUsd.toFixed(6)),
+    usage: usageKnown ? { promptTokens, completionTokens, totalTokens } : null,
+    settlement: usageKnown ? "provider_usage" : "reserved_max",
+    settledCostUsd: Number((actualCostUsd ?? MAX_COST_USD).toFixed(6)),
     review
   };
 } finally {

@@ -98,19 +98,19 @@ export function PublicCard({
           <div className="fact-summary">
             <span>
               <strong>{observations.length}</strong>
-              {lang === "ja" ? "AI観察" : "AI observations"}
+              {lang === "ja" ? "動画から推定" : "estimated from video"}
             </span>
             <span>
               <strong>{staffConfirmed.length}</strong>
-              {lang === "ja" ? "スタッフ確認済み" : "staff confirmed"}
+              {lang === "ja" ? "店舗確認・実測" : "venue confirmed / measured"}
             </span>
             <span>
               <strong>{estimates.length}</strong>
-              {lang === "ja" ? "AI参考推定" : "AI estimates"}
+              {lang === "ja" ? "推定範囲" : "estimated ranges"}
             </span>
             <span>
               <strong>{unknown.length}</strong>
-              {lang === "ja" ? "未確認項目" : "unknowns"}
+              {lang === "ja" ? "要確認" : "needs confirmation"}
             </span>
           </div>
         </div>
@@ -123,7 +123,7 @@ export function PublicCard({
           </figure>
         ) : (
           <div className="venue-image venue-image-missing">
-            {lang === "ja" ? "入口画像は未確認です" : "Entrance image is not verified"}
+            {lang === "ja" ? "入口画像は要確認です" : "Entrance image needs confirmation"}
           </div>
         )}
       </section>
@@ -135,7 +135,7 @@ export function PublicCard({
         <strong>{lang === "ja" ? "このカードについて" : "About this card"}</strong>
         <p>
           {lang === "ja"
-            ? "これは認定や利用可否の判定ではありません。AI参考推定は映像から得た幅付きの目安で、実測値と明確に区別しています。具体的な事実と未確認事項を合わせて、ご自身の来店判断にお使いください。"
+            ? "これは認定や利用可否の判定ではありません。「動画から推定」「実測」「店舗確認」を分けて表示しています。推定範囲は実測値ではありません。具体的な入口情報をご自身の来店判断にお使いください。"
             : "This is not certification or a usability decision. AI reference estimates are video-based ranges, clearly separated from measured values. Use the concrete facts and unknowns to make your own visit decision."}
         </p>
       </aside>
@@ -171,14 +171,16 @@ export function PublicCard({
                         <span className="public-fact-origin">
                           {isEstimate
                             ? lang === "ja"
-                              ? "AI参考推定"
+                              ? "動画から推定"
                               : "AI reference estimate"
                             : item.status === "ai_observed"
                               ? lang === "ja"
-                                ? "AI観察"
+                                ? "動画から推定"
                                 : "AI observed"
                               : lang === "ja"
-                                ? "スタッフ確認済み"
+                                ? item.status === "staff_measured"
+                                  ? "実測"
+                                  : "店舗確認"
                                 : "Staff confirmed"}
                         </span>
                         <h3>{item.label[lang]}</h3>
@@ -186,7 +188,7 @@ export function PublicCard({
                         {isEstimate && (
                           <p className="reference-estimate-disclaimer">
                             {lang === "ja"
-                              ? "映像からの参考推定、実測ではありません。"
+                              ? "動画からの推定範囲です。実測ではありません。"
                               : "Video-based reference estimate; not a measured value."}
                           </p>
                         )}
@@ -223,10 +225,10 @@ export function PublicCard({
         <div className="unknown-heading">
           <span>?</span>
           <div>
-            <h2>{lang === "ja" ? "まだ確認できていないこと" : "Not yet verified"}</h2>
+            <h2>{lang === "ja" ? "映像に写らず、確認が必要なこと" : "Needs confirmation"}</h2>
             <p>
               {lang === "ja"
-                ? "安全な幅付き推定もできない項目は、未確認として公開しています。"
+                ? "関連箇所が映っていない、または読み取れない項目だけを「要確認」としています。"
                 : "Items without enough evidence for a safe range estimate remain unknown."}
             </p>
           </div>
@@ -248,7 +250,7 @@ export function PublicCard({
         </div>
         <p>
           {lang === "ja"
-            ? `最終確認 ${card.lastVerifiedAt ?? "2026-07-25"} · 参考推定は実測値ではなく、利用可否を保証しません。`
+            ? `最終確認 ${card.lastVerifiedAt ?? "2026-07-25"} · 動画からの推定は実測値ではなく、利用可否を保証しません。`
             : `Last verified ${card.lastVerifiedAt ?? "2026-07-25"} · Reference estimates are not measurements and do not guarantee usability.`}
         </p>
       </footer>}

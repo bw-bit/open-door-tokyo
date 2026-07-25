@@ -47,13 +47,13 @@
       "section": "entrance",
       "label": { "ja": "段差の高さ", "en": "Step height" },
       "description": {
-        "ja": "映像のみでは測定できません",
-        "en": "This cannot be measured reliably from video alone"
+        "ja": "映像からの参考推定：約6〜10cm（実測ではありません）",
+        "en": "Video-based reference estimate: approx. 6-10 cm (not a measured value)"
       },
-      "value": null,
+      "value": "reference_estimate_cm:6-10",
       "unit": "cm",
-      "status": "unknown",
-      "confidence": 0,
+      "status": "ai_observed",
+      "confidence": 0.64,
       "provenance": [
         {
           "kind": "video_frame",
@@ -76,13 +76,13 @@
       "section": "entrance",
       "label": { "ja": "入口幅", "en": "Doorway width" },
       "description": {
-        "ja": "最も狭い部分を測ってください",
-        "en": "Measure the narrowest clear opening"
+        "ja": "映像からの参考推定：約75〜90cm（実測ではありません）",
+        "en": "Video-based reference estimate: approx. 75-90 cm (not a measured value)"
       },
-      "value": null,
+      "value": "reference_estimate_cm:75-90",
       "unit": "cm",
-      "status": "unknown",
-      "confidence": 0,
+      "status": "ai_observed",
+      "confidence": 0.66,
       "provenance": [
         {
           "kind": "video_frame",
@@ -117,6 +117,203 @@
           "frameId": "frame-03",
           "tSec": 11,
           "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "door-operation",
+      "field": "entrance.door_operation",
+      "section": "entrance",
+      "label": { "ja": "ドアの開け方", "en": "How the door opens" },
+      "description": {
+        "ja": "動画では、外側から手前に引いて開ける様子が見えます",
+        "en": "The video shows the door being pulled outward from outside"
+      },
+      "value": "manual_pull_outward",
+      "status": "ai_observed",
+      "confidence": 0.88,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-03",
+          "tSec": 11,
+          "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "threshold-height",
+      "field": "entrance.threshold_height_cm",
+      "section": "entrance",
+      "label": { "ja": "ドア下の敷居", "en": "Door threshold" },
+      "description": {
+        "ja": "映像からの参考推定：約1〜3cm（実測ではありません）",
+        "en": "Video-based reference estimate: approx. 1-3 cm (not a measured value)"
+      },
+      "value": "reference_estimate_cm:1-3",
+      "unit": "cm",
+      "status": "ai_observed",
+      "confidence": 0.58,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-03",
+          "tSec": 11,
+          "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "staffPrompt": {
+        "ja": "正確な高さが必要な場合は、敷居の最大の高さを測ってください",
+        "en": "If an exact value is needed, measure the highest point of the threshold"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "approach-space",
+      "field": "entrance.approach_space",
+      "section": "entrance",
+      "label": { "ja": "入口前のスペース", "en": "Space before the entrance" },
+      "description": {
+        "ja": "入口前はほぼ平らで、ドアの手前に向きを変えられそうな空間が見えます。寸法は実測していません",
+        "en": "The approach appears mostly level with visible room to change direction before the door; dimensions were not measured"
+      },
+      "value": "level_open_area_visible",
+      "status": "ai_observed",
+      "confidence": 0.76,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "handle-type",
+      "field": "entrance.handle_type",
+      "section": "entrance",
+      "label": { "ja": "取っ手・操作部", "en": "Handle or control" },
+      "description": {
+        "ja": "縦長の取っ手が見え、手で引いて操作するタイプと推定されます",
+        "en": "A vertical pull handle is visible and appears to be operated by hand"
+      },
+      "value": "vertical_pull_handle",
+      "status": "ai_observed",
+      "confidence": 0.84,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-03",
+          "tSec": 11,
+          "capturedAt": "2026-07-25T01:00:11.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "entrance-obstruction",
+      "field": "entrance.obstruction",
+      "section": "entrance",
+      "label": { "ja": "入口まわりの障害物", "en": "Entrance obstructions" },
+      "description": {
+        "ja": "撮影範囲では、ドアの正面をふさぐ看板や植木鉢は見当たりません",
+        "en": "No signboard or planter blocking the front of the door is visible in the recorded area"
+      },
+      "value": false,
+      "status": "ai_observed",
+      "confidence": 0.8,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "glass-visibility",
+      "field": "entrance.glass_visibility",
+      "section": "entrance",
+      "label": { "ja": "ガラス面の見つけやすさ", "en": "Glass visibility" },
+      "description": {
+        "ja": "ドアには濃い色の枠がありますが、中央のガラス面に目印となるステッカーは動画では見えません",
+        "en": "The door has a dark frame, but no visibility sticker is seen on the central glass panel"
+      },
+      "value": "dark_frame_no_visible_marker",
+      "status": "ai_observed",
+      "confidence": 0.73,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "entrance-lighting",
+      "field": "entrance.lighting",
+      "section": "entrance",
+      "label": { "ja": "入口の明るさ", "en": "Entrance lighting" },
+      "description": {
+        "ja": "撮影時は入口と段差の境目が見える明るさです。夜間の状態は動画に含まれていません",
+        "en": "At recording time, the entrance and step edge are visible; nighttime conditions are not shown"
+      },
+      "value": "daylight_edge_visible",
+      "status": "ai_observed",
+      "confidence": 0.82,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
+        }
+      ],
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "entrance-signage",
+      "field": "entrance.signage",
+      "section": "entrance",
+      "label": { "ja": "入口の案内表示", "en": "Entrance signage" },
+      "description": {
+        "ja": "店名表示は見えますが、スロープの案内や呼び出し方法の表示は撮影範囲では見当たりません",
+        "en": "The venue name is visible, but no ramp or assistance instructions are seen in the recorded area"
+      },
+      "value": "venue_name_only",
+      "status": "ai_observed",
+      "confidence": 0.71,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-01",
+          "tSec": 4,
+          "capturedAt": "2026-07-25T01:00:04.000Z"
         }
       ],
       "requiredForPublish": false,
@@ -235,13 +432,13 @@
       "section": "path_to_seat",
       "label": { "ja": "最も狭い通路", "en": "Narrowest passage" },
       "description": {
-        "ja": "映像のみでは幅を測定できません",
-        "en": "The width cannot be measured reliably from video"
+        "ja": "映像からの参考推定：約70〜85cm（実測ではありません）",
+        "en": "Video-based reference estimate: approx. 70-85 cm (not a measured value)"
       },
-      "value": null,
+      "value": "reference_estimate_cm:70-85",
       "unit": "cm",
-      "status": "unknown",
-      "confidence": 0,
+      "status": "ai_observed",
+      "confidence": 0.61,
       "provenance": [
         {
           "kind": "video_frame",
@@ -318,6 +515,218 @@
       "lastVerifiedAt": null
     },
     {
+      "id": "restroom-signage-type",
+      "field": "restroom.signage_type",
+      "section": "restroom",
+      "label": { "ja": "トイレの表示・種類", "en": "Restroom signage and type" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "入口の表示とトイレの種類を確認してください",
+        "en": "Confirm the entrance signage and restroom type"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-entrance-threshold",
+      "field": "restroom.entrance_threshold_height_cm",
+      "section": "restroom",
+      "label": { "ja": "トイレ入口の床の切り替わり・段差", "en": "Restroom entrance floor transition" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "unit": "cm",
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "床の切り替わりや段差がある場合は最大の高さを測ってください",
+        "en": "If there is a floor transition or threshold, measure its highest point"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-path-clear-width",
+      "field": "restroom.path_clear_width_cm",
+      "section": "restroom",
+      "label": { "ja": "トイレまで・内部の有効通路幅", "en": "Clear route width to and inside the restroom" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "unit": "cm",
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "扉や設備を通常の位置にした状態で最も狭い有効幅を測ってください",
+        "en": "Measure the narrowest clear width with doors and fixtures in their normal positions"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-visible-fixtures",
+      "field": "restroom.visible_fixture_types",
+      "section": "restroom",
+      "label": { "ja": "映像で見えるトイレ設備", "en": "Fixture types visible in the restroom" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "便器・小便器・洗面台など、見える設備を確認してください",
+        "en": "Confirm the visible fixtures, such as toilets, urinals, and sinks"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-grab-bars",
+      "field": "restroom.grab_bars",
+      "section": "restroom",
+      "label": { "ja": "手すり", "en": "Grab bars" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "見える手すりの本数・向き・位置を確認してください",
+        "en": "Confirm the number, orientation, and position of visible grab bars"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-accessible-stall",
+      "field": "restroom.accessible_stall",
+      "section": "restroom",
+      "label": { "ja": "バリアフリートイレの表示・個室", "en": "Marked accessible restroom or stall" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "バリアフリートイレの表示や専用個室があるか確認してください",
+        "en": "Confirm whether accessible-restroom signage or a dedicated stall is present"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-diaper-changing-station",
+      "field": "restroom.diaper_changing_station",
+      "section": "restroom",
+      "label": { "ja": "おむつ交換台", "en": "Diaper-changing station" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "おむつ交換台があるか確認してください",
+        "en": "Confirm whether a diaper-changing station is present"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-emergency-call-button",
+      "field": "restroom.emergency_call_button",
+      "section": "restroom",
+      "label": { "ja": "非常呼出ボタン・ひも", "en": "Emergency call button or cord" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "非常呼出ボタンやひもの位置を確認してください",
+        "en": "Confirm the position of any emergency call button or cord"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-sink-approach-clearance",
+      "field": "restroom.sink_approach_clearance",
+      "section": "restroom",
+      "label": { "ja": "洗面台への近づきやすさ・下部空間", "en": "Sink approach and under-sink clearance" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "洗面台前の障害物と洗面台下の空間を確認してください",
+        "en": "Confirm obstacles in front of the sink and visible space beneath it"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
+      "id": "restroom-turning-space",
+      "field": "restroom.turning_space",
+      "section": "restroom",
+      "label": { "ja": "トイレ内の方向転換・開放空間", "en": "Visible turning or open space in the restroom" },
+      "description": {
+        "ja": "この短い映像では確認できていないため要確認です",
+        "en": "Needs confirmation because it is not visible in this short video"
+      },
+      "value": null,
+      "status": "unknown",
+      "confidence": 0,
+      "provenance": [],
+      "staffPrompt": {
+        "ja": "設備や扉を通常の位置にした状態で、見える開放空間を確認してください",
+        "en": "Confirm the visible open floor area with fixtures and doors in their normal positions"
+      },
+      "requiredForPublish": false,
+      "confirmedByStaff": false,
+      "lastVerifiedAt": null
+    },
+    {
       "id": "turning-space",
       "field": "path_to_seat.turning_space",
       "section": "path_to_seat",
@@ -326,27 +735,40 @@
         "en": "Wheelchair turning space inside"
       },
       "description": {
-        "ja": "映像だけでは判断できず未確認です",
-        "en": "This cannot be determined from the video"
+        "ja": "入口からテーブル席までに、身体の向きを変えられそうな開けた部分が見えます。寸法と利用可否は確認していません",
+        "en": "An open area where a person may be able to change direction is visible between the entrance and tables; dimensions and usability are not confirmed"
       },
-      "value": null,
-      "status": "unknown",
-      "confidence": 0,
-      "provenance": [],
+      "value": "open_area_visible",
+      "status": "ai_observed",
+      "confidence": 0.67,
+      "provenance": [
+        {
+          "kind": "video_frame",
+          "frameId": "frame-04",
+          "tSec": 16,
+          "capturedAt": "2026-07-25T01:00:16.000Z"
+        }
+      ],
       "requiredForPublish": false,
       "confirmedByStaff": false,
       "lastVerifiedAt": null
     }
   ],
   "unknowns": [
-    "entrance.step_height_cm",
-    "entrance.door_width_cm",
     "path_to_seat.chairs_movable",
-    "path_to_seat.narrowest_passage_cm",
     "communication.writing_support",
     "communication.english_menu",
     "restroom.interior_equipment",
-    "path_to_seat.turning_space"
+    "restroom.signage_type",
+    "restroom.entrance_threshold_height_cm",
+    "restroom.path_clear_width_cm",
+    "restroom.visible_fixture_types",
+    "restroom.grab_bars",
+    "restroom.accessible_stall",
+    "restroom.diaper_changing_station",
+    "restroom.emergency_call_button",
+    "restroom.sink_approach_clearance",
+    "restroom.turning_space"
   ],
   "conflicts": [],
   "safetyAudit": {

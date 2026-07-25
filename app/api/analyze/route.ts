@@ -6,7 +6,11 @@ import {
   indexWithNosana
 } from "@/lib/providers";
 import { saveCard } from "@/lib/store";
-import { validateRealUploadFrames } from "@/lib/video-upload";
+import {
+  MAX_QWEN_VIDEO_DATA_URL_CHARS,
+  validateQwenVideoDataUrl,
+  validateRealUploadFrames
+} from "@/lib/video-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,6 +40,7 @@ const schema = z.object({
       fixtureUrl: z.string().max(2_048).optional()
     })
   ).min(1).max(4),
+  videoDataUrl: z.string().max(MAX_QWEN_VIDEO_DATA_URL_CHARS).optional(),
   transcript: z.string().max(8_000).optional(),
   useFixture: z.boolean().optional()
 }).superRefine((value, context) => {
@@ -63,6 +68,7 @@ const SAMPLE_CARD_IDS = new Set(["demo-cafe"]);
 function isVerifiedSample(input: z.infer<typeof schema>) {
   return (
     input.useFixture === true &&
+    input.videoDataUrl === undefined &&
     SAMPLE_CARD_IDS.has(input.cardId) &&
     input.frames.every(
       (frame) => Boolean(frame.fixtureUrl) && frame.dataUrl === undefined
@@ -92,6 +98,22 @@ export async function POST(request: Request) {
         },
         { status: frameValidation === "payload_too_large" ? 413 : 400 }
       );
+    }
+    if (parsed.data.videoDataUrl !== undefined) {
+      const videoValidation = validateQwenVideoDataUrl(
+        parsed.data.videoDataUrl
+      );
+      if (videoValidation !== "ok") {
+        return NextResponse.json(
+          {
+            error:
+              videoValidation === "payload_too_large"
+                ? "payload_too_large"
+                : "invalid_upload_video"
+          },
+          { status: videoValidation === "payload_too_large" ? 413 : 400 }
+        );
+      }
     }
   }
   const input = {

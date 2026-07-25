@@ -9,7 +9,7 @@ describe.skipIf(!live)("Qwen live contract", () => {
     const apiKey = process.env.DASHSCOPE_API_KEY;
     const baseUrl = process.env.QWEN_BASE_URL ||
       "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
-    const model = process.env.QWEN_MODEL || "qwen3.6-flash";
+    const model = process.env.QWEN_MODEL || "qwen3.7-plus";
     const region = process.env.QWEN_REGION || "intl";
     const workspaceId = process.env.QWEN_WORKSPACE_ID;
     const maxCostUsd = Number(process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD);

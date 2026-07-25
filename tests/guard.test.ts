@@ -1,8 +1,13 @@
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { guardStatus, reconcile, reserve } from "@/lib/guard";
+import {
+  guardStatus,
+  reconcile,
+  reserve,
+  settleUnknownAtReservedMaximum
+} from "@/lib/guard";
 import { GET } from "@/app/api/health/providers/route";
 import { providerPresence } from "@/lib/env";
 
@@ -97,6 +102,46 @@ describe("sponsor guard", () => {
     expect(results.filter((result) => !result.ok)).toHaveLength(1);
   });
 
+  it("allocates exactly three 0.05 slots from a 0.15 cap without a floating-point shortfall or over-allocation", async () => {
+    configure({
+      CONFIRMED_CAP_USD: "0.15",
+      SLOT_COST_USD: "0.05",
+      MAX_ACTION_COST_USD: "0.05"
+    });
+    await expect(guardStatus("qwen.chat")).resolves.toMatchObject({
+      remainingSlots: 3
+    });
+    for (const idempotencyKey of ["decimal-one", "decimal-two", "decimal-three"]) {
+      const held = await reserve({
+        surface: "qwen.chat",
+        maxCostUsd: 0.05,
+        idempotencyKey
+      });
+      expect(held).toMatchObject({ ok: true, slots: 1 });
+      if (!held.ok) throw new Error("reservation failed");
+      await expect(
+        reconcile({ reservationId: held.reservationId, actualCostUsd: 0.05 })
+      ).resolves.toEqual({ ok: true });
+    }
+    await expect(guardStatus("qwen.chat")).resolves.toMatchObject({
+      remainingSlots: 0
+    });
+    await expect(
+      reserve({
+        surface: "qwen.chat",
+        maxCostUsd: 0.05,
+        idempotencyKey: "decimal-four"
+      })
+    ).resolves.toEqual({ ok: false, code: "cap_exhausted" });
+    const partition = `${new Date().getUTCFullYear()}${String(
+      new Date().getUTCMonth() + 1
+    ).padStart(2, "0")}`;
+    const slots = await readdir(
+      path.join(directory, "guard", "qwen.chat", partition)
+    );
+    expect(slots).toHaveLength(3);
+  });
+
   it("exhausts create-only slots and records a partial reservation as abandoned", async () => {
     const result = await reserve({ surface: "qwen.chat", maxCostUsd: 2, idempotencyKey: "partial" });
     expect(result).toEqual({ ok: false, code: "cap_exhausted" });
@@ -138,6 +183,208 @@ describe("sponsor guard", () => {
       .resolves.toEqual({ ok: false, code: "unknown_usage" });
     await expect(reserve({ surface: "qwen.chat", maxCostUsd: 1, idempotencyKey: "blocked" }))
       .resolves.toEqual({ ok: false, code: "outstanding_unreconciled" });
+  });
+
+  it("can conservatively settle missing usage at the reserved maximum when explicitly enabled", async () => {
+    configure({ CONFIRMED_CAP_USD: "2" });
+    process.env.GUARD_QWEN_CHAT_UNKNOWN_USAGE_POLICY = "reserved_max";
+    const first = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd: 1,
+      idempotencyKey: "conservative"
+    });
+    if (!first.ok) throw new Error("reservation failed");
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: null })
+    ).resolves.toEqual({ ok: true });
+    expect(
+      (
+        await reserve({
+          surface: "qwen.chat",
+          maxCostUsd: 1,
+          idempotencyKey: "after-conservative"
+        })
+      ).ok
+    ).toBe(true);
+  });
+
+  it("preserves an unknown record but allows a user-authorized reserved-maximum settlement overlay", async () => {
+    configure({ CONFIRMED_CAP_USD: "2" });
+    const first = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd: 1,
+      idempotencyKey: "manual-conservative"
+    });
+    if (!first.ok) throw new Error("reservation failed");
+    await reconcile({ reservationId: first.reservationId, actualCostUsd: null });
+    await expect(
+      settleUnknownAtReservedMaximum({
+        reservationId: first.reservationId,
+        authorization: {
+          type: "user_authorized_reserved_max",
+          reservationId: first.reservationId,
+          surface: "qwen.chat",
+          idempotencyKey: "manual-conservative",
+          reservedCostUsd: 1
+        }
+      })
+    ).resolves.toEqual({ ok: true, settledCostUsd: 1 });
+    await expect(
+      settleUnknownAtReservedMaximum({
+        reservationId: first.reservationId,
+        authorization: {
+          type: "user_authorized_reserved_max",
+          reservationId: first.reservationId,
+          surface: "qwen.chat",
+          idempotencyKey: "manual-conservative",
+          reservedCostUsd: 1
+        }
+      })
+    ).resolves.toEqual({ ok: true, settledCostUsd: 1 });
+    expect(
+      (
+        await reserve({
+          surface: "qwen.chat",
+          maxCostUsd: 1,
+          idempotencyKey: "after-manual-conservative"
+        })
+      ).ok
+    ).toBe(true);
+  });
+
+  it("persists the missing-usage reason and observed cost for an auditable settlement", async () => {
+    configure({ CONFIRMED_CAP_USD: "2" });
+    const first = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd: 1,
+      idempotencyKey: "auditable-missing-usage"
+    });
+    if (!first.ok) throw new Error("reservation failed");
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: null })
+    ).resolves.toEqual({ ok: false, code: "unknown_usage" });
+    const record = JSON.parse(
+      await readFile(
+        path.join(
+          directory,
+          "guard",
+          "reconciliations",
+          `${first.reservationId}.json`
+        ),
+        "utf8"
+      )
+    );
+    expect(record).toMatchObject({
+      state: "unknown",
+      unknownReason: "missing_usage",
+      observedActualCostUsd: null
+    });
+  });
+
+  it("rejects a reserved-maximum overlay after overage and keeps the surface blocked", async () => {
+    configure({ CONFIRMED_CAP_USD: "3" });
+    process.env.GUARD_QWEN_CHAT_UNKNOWN_USAGE_POLICY = "reserved_max";
+    const first = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd: 1,
+      idempotencyKey: "combined-overage"
+    });
+    if (!first.ok) throw new Error("reservation failed");
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: 1.01 })
+    ).resolves.toEqual({ ok: false, code: "unknown_usage" });
+    await expect(
+      settleUnknownAtReservedMaximum({
+        reservationId: first.reservationId,
+        authorization: {
+          type: "user_authorized_reserved_max",
+          reservationId: first.reservationId,
+          surface: "qwen.chat",
+          idempotencyKey: "combined-overage",
+          reservedCostUsd: 1
+        }
+      })
+    ).resolves.toEqual({ ok: false, code: "not_unknown" });
+    await expect(
+      reserve({
+        surface: "qwen.chat",
+        maxCostUsd: 1,
+        idempotencyKey: "after-combined-overage"
+      })
+    ).resolves.toEqual({ ok: false, code: "outstanding_unreconciled" });
+    const record = JSON.parse(
+      await readFile(
+        path.join(
+          directory,
+          "guard",
+          "reconciliations",
+          `${first.reservationId}.json`
+        ),
+        "utf8"
+      )
+    );
+    expect(record).toMatchObject({
+      unknownReason: "overage",
+      observedActualCostUsd: 1.01
+    });
+  });
+
+  it.each([
+    ["reservationId", "wrong-reservation"],
+    ["surface", "gmi.chat"],
+    ["idempotencyKey", "wrong-idempotency"],
+    ["reservedCostUsd", 0.5]
+  ] as const)(
+    "rejects a reserved-maximum authorization with mismatched %s",
+    async (field, wrongValue) => {
+      configure({ CONFIRMED_CAP_USD: "2" });
+      const first = await reserve({
+        surface: "qwen.chat",
+        maxCostUsd: 1,
+        idempotencyKey: `authorization-${field}`
+      });
+      if (!first.ok) throw new Error("reservation failed");
+      await reconcile({ reservationId: first.reservationId, actualCostUsd: null });
+      const authorization = {
+        type: "user_authorized_reserved_max" as const,
+        reservationId: first.reservationId,
+        surface: "qwen.chat" as const,
+        idempotencyKey: `authorization-${field}`,
+        reservedCostUsd: 1
+      };
+      await expect(
+        settleUnknownAtReservedMaximum({
+          reservationId: first.reservationId,
+          authorization: { ...authorization, [field]: wrongValue }
+        })
+      ).resolves.toEqual({ ok: false, code: "authorization_mismatch" });
+      await expect(
+        reserve({
+          surface: "qwen.chat",
+          maxCostUsd: 1,
+          idempotencyKey: `after-authorization-${field}`
+        })
+      ).resolves.toEqual({ ok: false, code: "outstanding_unreconciled" });
+    }
+  );
+
+  it("handles create(false) as an idempotent reconciliation only when the record matches", async () => {
+    configure({ CONFIRMED_CAP_USD: "2" });
+    const first = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd: 1,
+      idempotencyKey: "reconcile-create-false"
+    });
+    if (!first.ok) throw new Error("reservation failed");
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: 0.5 })
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: 0.5 })
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      reconcile({ reservationId: first.reservationId, actualCostUsd: 0.4 })
+    ).resolves.toEqual({ ok: false, code: "store_unavailable" });
   });
 
   it("blocks only the unknown surface and permits another surface sequentially", async () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { blobGuardStore } from "./store-blob";
 import { fileGuardStore, type GuardStore } from "./store-file";
-import { readPolicy } from "./policy";
+import { policyPrefix, readPolicy } from "./policy";
 import type { BillableSurface, GuardStatus, ReserveResult } from "./types";
 
 export type { BillableSurface, GuardStatus, ReserveResult } from "./types";
@@ -14,9 +14,78 @@ interface Reservation {
   reservedCostUsd?: number;
   state: "active" | "reconciled" | "unknown";
   actualCostUsd?: number;
+  settlementMode?: "provider_usage" | "reserved_max_user_authorized";
+  unknownReason?:
+    | "missing_usage"
+    | "overage"
+    | "invalid_usage"
+    | "missing_reserved_cost";
+  observedActualCostUsd?: number | null | "non_finite";
 }
 
 const LOCK_PATH = "guard/global.lock";
+const MAX_SAFE_COUNT = BigInt(Number.MAX_SAFE_INTEGER);
+
+interface DecimalInteger {
+  coefficient: bigint;
+  scale: number;
+}
+
+function decimalInteger(value: number): DecimalInteger {
+  const [mantissa, exponentText] = value.toString().toLowerCase().split("e");
+  const exponent = exponentText === undefined ? 0 : Number(exponentText);
+  const negative = mantissa.startsWith("-");
+  const unsigned = negative ? mantissa.slice(1) : mantissa;
+  const [whole, fraction = ""] = unsigned.split(".");
+  let coefficient = BigInt(`${whole || "0"}${fraction}`);
+  if (negative) coefficient = -coefficient;
+  const scale = fraction.length - exponent;
+  if (scale < 0) {
+    return {
+      coefficient: coefficient * 10n ** BigInt(-scale),
+      scale: 0
+    };
+  }
+  return { coefficient, scale };
+}
+
+function alignDecimals(values: number[]): bigint[] {
+  const decimals = values.map(decimalInteger);
+  const scale = Math.max(...decimals.map((value) => value.scale));
+  return decimals.map(
+    (value) =>
+      value.coefficient * 10n ** BigInt(scale - value.scale)
+  );
+}
+
+function safeCount(value: bigint): number {
+  if (value < 0n || value > MAX_SAFE_COUNT) {
+    throw new RangeError("guard slot count is outside the safe integer range");
+  }
+  return Number(value);
+}
+
+function maximumSlots(
+  confirmedCapUsd: number,
+  spentSnapshotUsd: number,
+  slotCostUsd: number
+): number {
+  const [cap, spent, slot] = alignDecimals([
+    confirmedCapUsd,
+    spentSnapshotUsd,
+    slotCostUsd
+  ]);
+  if (slot <= 0n || cap <= spent) return 0;
+  return safeCount((cap - spent) / slot);
+}
+
+function requiredSlots(maxCostUsd: number, slotCostUsd: number): number {
+  const [cost, slot] = alignDecimals([maxCostUsd, slotCostUsd]);
+  if (cost <= 0n || slot <= 0n) {
+    throw new RangeError("guard slot values must be positive");
+  }
+  return safeCount((cost + slot - 1n) / slot);
+}
 
 function store(): GuardStore {
   return process.env.NODE_ENV === "production" ? blobGuardStore : fileGuardStore;
@@ -30,15 +99,64 @@ function reservationPath(id: string): string {
   return `guard/reservations/${id}.json`;
 }
 
+function settlementPath(id: string): string {
+  return `guard/conservative-settlements/${id}.json`;
+}
+
+function reconciliationPath(id: string): string {
+  return `guard/reconciliations/${id}.json`;
+}
+
+function observedCost(actualCostUsd: number | null): number | null | "non_finite" {
+  if (actualCostUsd === null) return null;
+  return Number.isFinite(actualCostUsd) ? actualCostUsd : "non_finite";
+}
+
+function unknownReason(
+  actualCostUsd: number | null,
+  reservedCostUsd: number | undefined
+): Reservation["unknownReason"] | undefined {
+  if (actualCostUsd === null) return "missing_usage";
+  if (!Number.isFinite(actualCostUsd) || actualCostUsd < 0) {
+    return "invalid_usage";
+  }
+  if (
+    reservedCostUsd === undefined ||
+    !Number.isFinite(reservedCostUsd) ||
+    reservedCostUsd <= 0
+  ) {
+    return "missing_reserved_cost";
+  }
+  if (actualCostUsd > reservedCostUsd) return "overage";
+  return undefined;
+}
+
+function sameReconciliation(left: Reservation | null, right: Reservation): boolean {
+  return (
+    left?.reservationId === right.reservationId &&
+    left.surface === right.surface &&
+    left.idempotencyKey === right.idempotencyKey &&
+    left.reservedCostUsd === right.reservedCostUsd &&
+    left.state === right.state &&
+    left.actualCostUsd === right.actualCostUsd &&
+    left.settlementMode === right.settlementMode &&
+    left.unknownReason === right.unknownReason &&
+    left.observedActualCostUsd === right.observedActualCostUsd
+  );
+}
+
 async function reservations(currentStore: GuardStore): Promise<Array<{ path: string; value: Reservation }>> {
   const paths = await currentStore.list("guard/reservations/");
   const values = await Promise.all(paths.map(async (path) => {
     const value = await currentStore.read<Reservation>(path);
     if (!value) return { path, value };
     const reconciliation = await currentStore.read<Reservation>(
-      `guard/reconciliations/${value.reservationId}.json`
+      reconciliationPath(value.reservationId)
     );
-    return { path, value: reconciliation ?? value };
+    const conservativeSettlement = await currentStore.read<Reservation>(
+      settlementPath(value.reservationId)
+    );
+    return { path, value: conservativeSettlement ?? reconciliation ?? value };
   }));
   return values.filter((entry): entry is { path: string; value: Reservation } => entry.value !== null);
 }
@@ -86,8 +204,12 @@ export async function reserve(input: {
     }
 
     const policy = configured.policy;
-    const maxSlots = Math.max(0, Math.floor((policy.confirmedCapUsd - policy.spentSnapshotUsd) / policy.slotCostUsd));
-    const needed = Math.ceil(input.maxCostUsd / policy.slotCostUsd);
+    const maxSlots = maximumSlots(
+      policy.confirmedCapUsd,
+      policy.spentSnapshotUsd,
+      policy.slotCostUsd
+    );
+    const needed = requiredSlots(input.maxCostUsd, policy.slotCostUsd);
     const acquired: number[] = [];
     const partition = month();
     for (let slot = 0; slot < maxSlots && acquired.length < needed; slot += 1) {
@@ -137,25 +259,131 @@ export async function reconcile(input: {
     const original = await currentStore.read<Reservation>(reservationPath(input.reservationId));
     if (!original || original.state !== "active") return { ok: false, code: "store_unavailable" };
     const reservedCostUsd = original.reservedCostUsd;
-    const usageUnknown =
-      input.actualCostUsd === null ||
-      reservedCostUsd === undefined ||
-      input.actualCostUsd > reservedCostUsd ||
-      !Number.isFinite(input.actualCostUsd) ||
-      input.actualCostUsd < 0;
+    const reason = unknownReason(input.actualCostUsd, reservedCostUsd);
+    const policy =
+      process.env[
+        `GUARD_${policyPrefix(original.surface)}_UNKNOWN_USAGE_POLICY`
+      ];
+    const settleAtReservedMaximum =
+      reason === "missing_usage" &&
+      reservedCostUsd !== undefined &&
+      policy === "reserved_max";
+    const effectiveCostUsd = settleAtReservedMaximum
+      ? reservedCostUsd
+      : input.actualCostUsd;
+    const usageUnknown = reason !== undefined && !settleAtReservedMaximum;
     let next: Reservation;
     if (usageUnknown) {
-      next = { ...original, state: "unknown" };
+      next = {
+        ...original,
+        state: "unknown",
+        unknownReason: reason,
+        observedActualCostUsd: observedCost(input.actualCostUsd)
+      };
     } else {
-      next = { ...original, state: "reconciled", actualCostUsd: input.actualCostUsd as number };
+      next = {
+        ...original,
+        state: "reconciled",
+        actualCostUsd: effectiveCostUsd as number,
+        settlementMode: settleAtReservedMaximum
+          ? "reserved_max_user_authorized"
+          : "provider_usage"
+      };
     }
-    await currentStore.create(`guard/reconciliations/${input.reservationId}.json`, next);
+    const created = await currentStore.create(reconciliationPath(input.reservationId), next);
+    if (!created) {
+      const existing = await currentStore.read<Reservation>(
+        reconciliationPath(input.reservationId)
+      );
+      if (!sameReconciliation(existing, next)) {
+        return { ok: false, code: "store_unavailable" };
+      }
+    }
     if (usageUnknown) {
       await currentStore.remove(LOCK_PATH);
       return { ok: false, code: "unknown_usage" };
     }
     await currentStore.remove(LOCK_PATH);
     return { ok: true };
+  } catch {
+    return { ok: false, code: "store_unavailable" };
+  }
+}
+
+export async function settleUnknownAtReservedMaximum(input: {
+  reservationId: string;
+  authorization: {
+    type: "user_authorized_reserved_max";
+    reservationId: string;
+    surface: BillableSurface;
+    idempotencyKey: string;
+    reservedCostUsd: number;
+  };
+}): Promise<
+  | { ok: true; settledCostUsd: number }
+  | {
+      ok: false;
+      code: "authorization_mismatch" | "not_unknown" | "store_unavailable";
+    }
+> {
+  const currentStore = store();
+  try {
+    const original = await currentStore.read<Reservation>(
+      reservationPath(input.reservationId)
+    );
+    const reconciliation = await currentStore.read<Reservation>(
+      reconciliationPath(input.reservationId)
+    );
+    const authorizationMatches =
+      input.authorization.type === "user_authorized_reserved_max" &&
+      input.authorization.reservationId === input.reservationId &&
+      input.authorization.surface === original?.surface &&
+      input.authorization.idempotencyKey === original?.idempotencyKey &&
+      input.authorization.reservedCostUsd === original?.reservedCostUsd;
+    if (!authorizationMatches) {
+      return { ok: false, code: "authorization_mismatch" };
+    }
+    if (
+      !original ||
+      reconciliation?.state !== "unknown" ||
+      reconciliation.unknownReason !== "missing_usage" ||
+      reconciliation.observedActualCostUsd !== null ||
+      original.reservedCostUsd === undefined ||
+      !Number.isFinite(original.reservedCostUsd) ||
+      original.reservedCostUsd <= 0
+    ) {
+      return { ok: false, code: "not_unknown" };
+    }
+    const settlement: Reservation = {
+      ...reconciliation,
+      state: "reconciled",
+      actualCostUsd: original.reservedCostUsd,
+      settlementMode: "reserved_max_user_authorized"
+    };
+    const created = await currentStore.create(
+      settlementPath(input.reservationId),
+      settlement
+    );
+    if (!created) {
+      const existing = await currentStore.read<Reservation>(
+        settlementPath(input.reservationId)
+      );
+      if (
+        existing?.state === "reconciled" &&
+        existing.reservationId === original.reservationId &&
+        existing.surface === input.authorization.surface &&
+        existing.idempotencyKey === input.authorization.idempotencyKey &&
+        existing.reservedCostUsd === input.authorization.reservedCostUsd &&
+        existing.actualCostUsd === input.authorization.reservedCostUsd &&
+        existing.settlementMode === "reserved_max_user_authorized" &&
+        existing.unknownReason === "missing_usage" &&
+        existing.observedActualCostUsd === null
+      ) {
+        return { ok: true, settledCostUsd: original.reservedCostUsd };
+      }
+      return { ok: false, code: "store_unavailable" };
+    }
+    return { ok: true, settledCostUsd: original.reservedCostUsd };
   } catch {
     return { ok: false, code: "store_unavailable" };
   }
@@ -176,12 +404,10 @@ export async function guardStatus(surface: BillableSurface): Promise<GuardStatus
     const partition = month();
     const used = (await currentStore.list(`guard/${surface}/${partition}/`)).length;
     const allReservations = await reservations(currentStore);
-    const maxSlots = Math.max(
-      0,
-      Math.floor(
-        (configured.policy.confirmedCapUsd - configured.policy.spentSnapshotUsd) /
-          configured.policy.slotCostUsd
-      )
+    const maxSlots = maximumSlots(
+      configured.policy.confirmedCapUsd,
+      configured.policy.spentSnapshotUsd,
+      configured.policy.slotCostUsd
     );
     return {
       capKnown: true,

@@ -29,7 +29,7 @@ export function EvidenceRow({
   const isUnknown = item.status === "unknown";
   const isEstimate = isReferenceEstimate(item);
   const sourceLabel = isEstimate
-    ? "AI参考推定"
+    ? "動画から推定"
     : fieldStatusLabels[item.status].ja;
   const sourceCount = item.provenance.length;
 
@@ -57,7 +57,7 @@ export function EvidenceRow({
       <div className="evidence-body">
         <div className="evidence-label">
           <span className={`status status-${item.status}`}>
-            {isEstimate ? "AI参考推定" : fieldStatusLabels[item.status].ja}
+            {isEstimate ? "動画から推定（幅の目安）" : fieldStatusLabels[item.status].ja}
           </span>
           <small>{item.field}</small>
         </div>
@@ -65,7 +65,7 @@ export function EvidenceRow({
         <p>{item.description.ja}</p>
         {isEstimate && (
           <p className="reference-estimate-note">
-            映像からの参考推定、実測ではありません。証拠フレーム
+            動画からの推定範囲です。実測ではありません。証拠フレーム
             {frame ? ` ${formatTime(frame.tSec)}` : ""}を確認してください。
           </p>
         )}
@@ -124,7 +124,7 @@ export function EvidenceRow({
                       })
                     }
                   />
-                  <span>映像では判断できないため「未確認」にする</span>
+                  <span>映像では読み取れないため「要確認」にする</span>
                 </label>
               </div>
             )}
@@ -134,7 +134,7 @@ export function EvidenceRow({
       <div className="evidence-source-label">
         <span>情報の出どころ</span>
         <strong>{sourceLabel}</strong>
-        <small>{sourceCount > 0 ? `根拠 ${sourceCount}件` : "根拠未確認"}</small>
+        <small>{sourceCount > 0 ? `根拠 ${sourceCount}件` : "根拠要確認"}</small>
       </div>
     </article>
   );

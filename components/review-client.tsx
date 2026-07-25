@@ -261,18 +261,19 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
               <span className="eyebrow">公開前の確認</span>
               <h1>公開前に、お店の方が確かめてください。</h1>
               <p>
-                AIが動画から整理した内容です。画像を見ながら直し、分からない所は
-                「未確認」のまま公開できます。参考推定は実測値ではありません。
+                AIが来店前に知りたい入口情報を動画から先回りして整理しました。
+                画像を見ながら直し、映っていない所だけ「要確認」にできます。
+                幅や高さの推定範囲は実測値ではありません。
               </p>
             </div>
             <div className="review-counts">
               <span><strong>{card.items.length}</strong>抽出項目</span>
               <span className="confirmed-count">
-                <strong>{observationCount}</strong>AI観察
+                <strong>{observationCount}</strong>動画から推定
               </span>
-              <span className="estimate-count"><strong>{estimateCount}</strong>AI参考推定</span>
-              <span><strong>{staffConfirmedCount}</strong>スタッフ確認済み</span>
-              <span className="unknown-count"><strong>{unknownCount}</strong>未確認</span>
+              <span className="estimate-count"><strong>{estimateCount}</strong>推定範囲</span>
+              <span><strong>{staffConfirmedCount}</strong>店舗確認・実測</span>
+              <span className="unknown-count"><strong>{unknownCount}</strong>要確認</span>
             </div>
           </div>
 
@@ -345,7 +346,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                   }
                   disabled={ready}
                 >
-                  <option value="">未確認</option>
+                  <option value="">要確認</option>
                   <option value="true">1段あり</option>
                   <option value="false">段差なし</option>
                 </select>
@@ -362,7 +363,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                       stepHeight: event.target.value
                     }))
                   }
-                  placeholder="未確認"
+                  placeholder="要確認"
                   disabled={ready}
                 />
               </label>
@@ -378,7 +379,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                       doorWidth: event.target.value
                     }))
                   }
-                  placeholder="未確認"
+                  placeholder="要確認"
                   disabled={ready}
                 />
               </label>
@@ -394,7 +395,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                       passageWidth: event.target.value
                     }))
                   }
-                  placeholder="未確認"
+                  placeholder="要確認"
                   disabled={ready}
                 />
               </label>
@@ -415,7 +416,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                     }
                     disabled={ready}
                   >
-                    <option value="">未確認</option>
+                    <option value="">要確認</option>
                     <option value="true">あり</option>
                     <option value="false">なし</option>
                   </select>
@@ -423,7 +424,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
               ))}
             </div>
             <p>
-              スタッフ実測を入力するとAI参考推定を置き換えます。空欄でも推定を
+              実測値を入力すると動画からの推定範囲を置き換えます。空欄でも推定を
               実測値として扱うことはありません。
             </p>
           </section>
@@ -445,7 +446,7 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                 disabled={ready}
               />
               <span>
-                AI観察・参考推定・実測値・未確認項目を確認し、参考推定を実測とせず、
+                動画からの推定・実測値・店舗確認・要確認項目を確認し、推定範囲を実測とせず、
                 包括的な利用可否を認定しないことに同意します。
               </span>
             </label>

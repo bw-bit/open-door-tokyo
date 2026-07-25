@@ -27,7 +27,7 @@ const schema = z.object({
       descriptionEn: z.string().trim().min(1).max(240),
       markUnknown: z.boolean()
     }).strict()
-  ).max(13).default([])
+  ).max(24).default([])
 }).refine(
   (value) =>
     value.confirmations.some(

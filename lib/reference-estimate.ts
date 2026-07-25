@@ -5,8 +5,11 @@ const ESTIMATE_PATTERN =
   /^reference_estimate_cm:(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/;
 const ESTIMATABLE_FIELDS = new Set([
   "entrance.step_height_cm",
+  "entrance.threshold_height_cm",
   "entrance.door_width_cm",
-  "path_to_seat.narrowest_passage_cm"
+  "path_to_seat.narrowest_passage_cm",
+  "restroom.entrance_threshold_height_cm",
+  "restroom.path_clear_width_cm"
 ]);
 
 export type ReferenceEstimate = {
@@ -37,7 +40,7 @@ export function parseReferenceEstimate(
     !Number.isFinite(maxCm) ||
     minCm < 0 ||
     maxCm > 500 ||
-    maxCm - minCm < 1
+    maxCm - minCm < 2
   ) {
     return null;
   }

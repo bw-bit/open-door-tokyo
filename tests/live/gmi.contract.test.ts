@@ -21,5 +21,5 @@ describe.skipIf(process.env.RUN_LIVE_PROVIDER_TESTS !== "1")("GMI live contract"
       expect(result.usage?.totalTokens).toBeGreaterThan(0);
       known = true;
     } finally { await reconcile({ reservationId: held.reservationId, actualCostUsd: known ? maxCostUsd : null }); }
-  });
+  }, 30_000);
 });

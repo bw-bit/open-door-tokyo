@@ -1,11 +1,11 @@
 import type { CardState, FieldStatus, LocalizedText, ProviderMode } from "./types";
 
 export const fieldStatusLabels: Record<FieldStatus, LocalizedText> = {
-  ai_observed: { ja: "AI観察", en: "AI observed" },
-  staff_stated: { ja: "スタッフ回答", en: "Staff stated" },
-  staff_measured: { ja: "スタッフ実測", en: "Staff measured" },
-  confirmed: { ja: "確認済み", en: "Confirmed" },
-  unknown: { ja: "未確認", en: "Unknown" },
+  ai_observed: { ja: "動画から推定", en: "Estimated from video" },
+  staff_stated: { ja: "店舗確認", en: "Venue confirmed" },
+  staff_measured: { ja: "実測", en: "Measured" },
+  confirmed: { ja: "店舗確認", en: "Venue confirmed" },
+  unknown: { ja: "要確認", en: "Needs confirmation" },
   conflict: { ja: "矛盾", en: "Conflict" }
 };
 

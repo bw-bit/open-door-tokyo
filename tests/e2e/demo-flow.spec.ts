@@ -8,7 +8,7 @@ test("sample video becomes a reviewed and published evidence card", async ({
     page.getByRole("heading", { name: /お店の入口を撮ると/ })
   ).toBeVisible();
   await expect(
-    page.getByText(/映像から幅のある参考値を出すことがあります/)
+    page.getByText(/動画から幅のある推定範囲を出します/)
   ).toBeVisible();
   await expect(page.getByLabel("住所（日本語）")).toHaveValue(
     "東京都千代田区架空1-2-3"
@@ -32,7 +32,7 @@ test("sample video becomes a reviewed and published evidence card", async ({
       name: "AIが見た画像を、そのまま根拠として表示"
     })
   ).toBeVisible();
-  await expect(page.getByText("AI参考推定").first()).toBeVisible();
+  await expect(page.getByText("動画から推定（幅の目安）").first()).toBeVisible();
   await expect(
     page.getByText("映像からの参考推定：約6〜10cm（実測ではありません）")
   ).toBeVisible();
@@ -53,7 +53,7 @@ test("sample video becomes a reviewed and published evidence card", async ({
     .fill("Staff confirmed: this is a manually opened sliding door");
 
   await page
-    .getByRole("checkbox", { name: /AI観察・参考推定・実測値・未確認項目を確認/ })
+    .getByRole("checkbox", { name: /動画からの推定・実測値・店舗確認・要確認項目を確認/ })
     .check();
   await page
     .getByRole("button", { name: "店舗スタッフとして確認する" })
@@ -80,12 +80,12 @@ test("sample video becomes a reviewed and published evidence card", async ({
 
   await page.goto(href!);
   await expect(page.getByText("段差の高さは約8cmです")).toBeVisible();
-  await expect(page.getByText("スタッフ確認済み").first()).toBeVisible();
+  await expect(page.getByText("店舗確認").first()).toBeVisible();
   await expect(page.getByText(/これは認定や利用可否の判定ではありません/)).toBeVisible();
   await expect(
     page.getByText("スタッフ確認: 手動で開ける引き戸です")
   ).toBeVisible();
-  await expect(page.getByText("まだ確認できていないこと")).toBeVisible();
+  await expect(page.getByText("映像に写らず、確認が必要なこと")).toBeVisible();
   await expect(page.getByText("認定ではなく、判断材料を。")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "行く前に知りたい6項目" })

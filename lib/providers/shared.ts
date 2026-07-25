@@ -5,7 +5,12 @@ import type { LocalizedText, ProviderId, ProviderTrace } from "../types";
 
 export type ChatContentPart =
   | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+  | { type: "image_url"; image_url: { url: string } }
+  | {
+      type: "video_url";
+      video_url: { url: string };
+      fps: number;
+    };
 
 export interface ChatMessage {
   role: "system" | "user";

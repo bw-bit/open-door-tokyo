@@ -29,9 +29,14 @@ describe("reference estimate contract", () => {
   it("allows ranges only for bounded measurement fields", () => {
     expect(canUseReferenceEstimate("entrance.step_height_cm")).toBe(true);
     expect(canUseReferenceEstimate("entrance.door_width_cm")).toBe(true);
+    expect(canUseReferenceEstimate("entrance.threshold_height_cm")).toBe(true);
     expect(
       canUseReferenceEstimate("path_to_seat.narrowest_passage_cm")
     ).toBe(true);
+    expect(
+      canUseReferenceEstimate("restroom.entrance_threshold_height_cm")
+    ).toBe(true);
+    expect(canUseReferenceEstimate("restroom.path_clear_width_cm")).toBe(true);
     expect(canUseReferenceEstimate("entrance.step_presence")).toBe(false);
     expect(canUseReferenceEstimate("path_to_seat.turning_space")).toBe(false);
   });
@@ -42,6 +47,7 @@ describe("reference estimate contract", () => {
       maxCm: 5
     });
     expect(parseReferenceEstimate("reference_estimate_cm:4-4")).toBeNull();
+    expect(parseReferenceEstimate("reference_estimate_cm:3-4")).toBeNull();
     expect(parseReferenceEstimate("reference_estimate_cm:5-3")).toBeNull();
     expect(parseReferenceEstimate("reference_estimate_cm:0-501")).toBeNull();
     expect(parseReferenceEstimate("reference_estimate_cm:3-5-9")).toBeNull();
@@ -55,5 +61,28 @@ describe("reference estimate contract", () => {
       ja: "映像からの参考推定：約3〜5cm（実測ではありません）",
       en: "Video-based reference estimate: approx. 3-5 cm (not a measured value)"
     });
+  });
+
+  it("keeps proactive entrance fixture facts out of the unknown wall", () => {
+    const card = getDemoAnalysisCard();
+    for (const field of [
+      "entrance.door_type",
+      "entrance.door_operation",
+      "entrance.door_width_cm",
+      "entrance.threshold_height_cm",
+      "entrance.approach_space",
+      "entrance.handle_type",
+      "entrance.obstruction",
+      "entrance.glass_visibility",
+      "entrance.lighting",
+      "entrance.signage",
+      "path_to_seat.turning_space"
+    ]) {
+      const item = card.items.find((candidate) => candidate.field === field);
+      expect(item, field).toBeDefined();
+      expect(item?.status, field).not.toBe("unknown");
+      expect(item?.provenance[0]?.kind, field).toBe("video_frame");
+      expect(card.unknowns, field).not.toContain(field);
+    }
   });
 });

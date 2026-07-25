@@ -78,7 +78,7 @@ export async function auditWithGmi(
       baseUrl,
       apiKey,
       model,
-      maxTokens: 768,
+      maxTokens: 64,
       responseFormat: { type: "json_object" },
       messages: [
         {

@@ -128,6 +128,27 @@ describe("provider adapter transport contract", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       "https://api.gmi-serving.com/v1/chat/completions"
     );
+    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({
+      Authorization: "Bearer test",
+      "Content-Type": "application/json"
+    });
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0][1]?.body)
+    ) as Record<string, unknown>;
+    expect(requestBody).toMatchObject({
+      model: "model",
+      max_tokens: 64,
+      temperature: 0,
+      response_format: { type: "json_object" }
+    });
+    expect(requestBody.max_tokens).toBeLessThanOrEqual(128);
+    expect(requestBody.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: "system" }),
+        expect.objectContaining({ role: "user" })
+      ])
+    );
+    expect(requestBody).not.toHaveProperty("maxTokens");
   });
 
   it("requires ai& verdict enum and issues array", async () => {

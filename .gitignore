@@ -20,3 +20,4 @@ outputs/submission/*.inspect.ndjson
 outputs/submission/*-montage.jpg
 outputs/submission/final-demo-qa/
 outputs/submission/qwen-live-qa/
+outputs/submission/sample-video-tests/

@@ -180,6 +180,7 @@ export interface AnalyzeRequest {
   cardId: string;
   brief: Omit<VenueBrief, "cardId" | "createdAt">;
   frames: ExtractedFramePayload[];
+  videoDataUrl?: string;
   transcript?: string;
   useFixture?: boolean;
 }

@@ -46,7 +46,7 @@ describe("provider mode honesty", () => {
       new Response(
         JSON.stringify({
           id: "request-live",
-          model: "qwen3.6-flash",
+          model: "qwen3.7-plus",
           usage: {
             prompt_tokens: 30,
             completion_tokens: 12,
@@ -63,6 +63,16 @@ describe("provider mode honesty", () => {
                       description_en: "Applied live observation",
                       status: "ai_observed",
                       confidence: 0.88,
+                      frame_id: "frame-01"
+                    },
+                    {
+                      field: "entrance.door_operation",
+                      description_ja: "手前に引いて開ける手動ドアと推定",
+                      description_en: "Appears to be a manual pull door",
+                      status: "ai_observed",
+                      observation_type: "visible_fact",
+                      observed_value: "manual_pull_outward",
+                      confidence: 0.81,
                       frame_id: "frame-01"
                     }
                   ],
@@ -103,7 +113,7 @@ describe("provider mode honesty", () => {
     expect(result.data.frames[0].url).toBe("data:image/jpeg;base64,TEST");
     expect(result.data.items[1].status).toBe("unknown");
     expect(result.data.items[1].description.ja).toBe(
-      "映像からは確認できていません"
+      "この短い映像では確認できていないため要確認です"
     );
     expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({
       "X-DashScope-WorkSpace": "test-workspace"
@@ -116,10 +126,28 @@ describe("provider mode honesty", () => {
       messages?: Array<{ content?: string | Array<{ text?: string }> }>;
     };
     expect(requestBody.enable_thinking).toBe(false);
-    expect(requestBody.max_tokens).toBe(768);
+    expect(requestBody.max_tokens).toBe(2400);
     expect(JSON.stringify(requestBody.messages)).toContain(
       "entrance.step_presence"
     );
+    expect(JSON.stringify(requestBody.messages)).toContain(
+      "entrance.glass_visibility"
+    );
+    expect(JSON.stringify(requestBody.messages)).toContain(
+      "Do not mark a field unknown merely because it was not physically measured"
+    );
+    expect(
+      result.data.items.find(
+        (item) => item.field === "entrance.door_operation"
+      )
+    ).toMatchObject({
+      status: "ai_observed",
+      value: "manual_pull_outward",
+      description: {
+        ja: "手前に引いて開ける手動ドアと推定",
+        en: "Appears to be a manual pull door"
+      }
+    });
     expect(result.data.items[0].provenance[0]).toMatchObject({
       kind: "video_frame",
       frameId: "frame-01",
@@ -128,7 +156,7 @@ describe("provider mode honesty", () => {
     expect(result.data.unknowns).toContain("restroom.interior_equipment");
     expect(vi.mocked(reconcile)).toHaveBeenCalledWith({
       reservationId: "test-reservation",
-      actualCostUsd: 0.0000255
+      actualCostUsd: 0.0000312
     });
   });
 
@@ -141,7 +169,7 @@ describe("provider mode honesty", () => {
       new Response(
         JSON.stringify({
           id: "request-estimate",
-          model: "qwen3.6-flash",
+          model: "qwen3.7-plus",
           usage: {
             prompt_tokens: 30,
             completion_tokens: 12,
@@ -255,7 +283,7 @@ describe("provider mode honesty", () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            model: "qwen3.6-flash",
+            model: "qwen3.7-plus",
             usage: {
               prompt_tokens: 20,
               completion_tokens: 10,
@@ -350,7 +378,7 @@ describe("provider mode honesty", () => {
     );
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.headers).not.toHaveProperty("X-DashScope-WorkSpace");
-    expect(JSON.parse(String(init.body)).model).toBe("qwen3.6-flash");
+    expect(JSON.parse(String(init.body)).model).toBe("qwen3.7-plus");
     expect(JSON.parse(String(init.body)).enable_thinking).toBe(false);
   });
 
@@ -368,15 +396,16 @@ describe("provider mode honesty", () => {
         }],
         unknowns: [],
         proposed_claims: []
-      })
+      }),
+      "semantic_invalid"
     ],
-    ["malformed JSON", "{not-json"]
-  ])("fails closed for a Qwen response with %s", async (_label, content) => {
+    ["malformed JSON", "{not-json", "schema_invalid"]
+  ] as const)("fails closed for a Qwen response with %s", async (_label, content, errorCode) => {
     process.env.DASHSCOPE_API_KEY = "test-key";
     process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";
     process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      model: "qwen3.6-flash",
+      model: "qwen3.7-plus",
       usage: {
         prompt_tokens: 12,
         completion_tokens: 8,
@@ -399,7 +428,7 @@ describe("provider mode honesty", () => {
     expect(result.trace).toMatchObject({
       mode: "fallback",
       ok: false,
-      errorCode: "schema_invalid",
+      errorCode,
       validation: "failed"
     });
     expect(result.data.items.every((item) => item.status === "unknown")).toBe(true);
@@ -419,16 +448,16 @@ describe("provider mode honesty", () => {
     [
       "outside the supported pricing window",
       {
-        prompt_tokens: 256_000,
+        prompt_tokens: 256_001,
         completion_tokens: 1,
-        total_tokens: 256_001
+        total_tokens: 256_002
       }
     ]
   ])("quarantines Qwen reservation when usage is %s", async (_label, usage) => {
     process.env.DASHSCOPE_API_KEY = "test-key";
     process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      model: "qwen3.6-flash",
+      model: "qwen3.7-plus",
       ...(usage ? { usage } : {}),
       choices: [{ message: { content: JSON.stringify({
         observations: [{
@@ -461,7 +490,220 @@ describe("provider mode honesty", () => {
     });
   });
 
-  it("does not apply qwen3.6-flash rates to an override model", async () => {
+  it("reconciles qwen3.7-plus at the <=256K price tier within the $0.11 guard", async () => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.11";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            model: "qwen3.7-plus",
+            usage: {
+              prompt_tokens: 256_000,
+              completion_tokens: 2_400,
+              total_tokens: 258_400
+            },
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    observations: [
+                      {
+                        field: "entrance.step_presence",
+                        description_ja: "入口の段差が見えます",
+                        description_en: "An entrance step is visible",
+                        status: "ai_observed",
+                        observed_value: true,
+                        confidence: 0.8,
+                        frame_id: "frame-01"
+                      }
+                    ],
+                    unknowns: [],
+                    proposed_claims: []
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+      )
+    );
+
+    const result = await analyzeWithQwen({
+      cardId: "qwen37-upper-price-tier",
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [
+        {
+          frameId: "frame-01",
+          tSec: 1,
+          dataUrl: "data:image/jpeg;base64,REAL"
+        }
+      ],
+      useFixture: false
+    });
+
+    expect(result.trace.mode).toBe("live");
+    expect(vi.mocked(reconcile)).toHaveBeenCalledWith({
+      reservationId: "test-reservation",
+      actualCostUsd: 0.10624
+    });
+  });
+
+  it("sends direct video at fps 1 while preserving the four evidence frames", async () => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.11";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: "qwen3.7-plus",
+          usage: {
+            prompt_tokens: 30,
+            completion_tokens: 10,
+            total_tokens: 40
+          },
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  observations: [
+                    {
+                      field: "restroom.visible_fixture_types",
+                      description_ja: "洋式便器が見えます",
+                      description_en: "A toilet is visible",
+                      status: "ai_observed",
+                      observed_value: "toilet",
+                      confidence: 0.8,
+                      frame_id: "frame-02"
+                    },
+                    {
+                      field: "restroom.provider_format_drift",
+                      description_ja: "この不正項目だけを無視",
+                      description_en: "Skip only this invalid item",
+                      status: "ai_observed",
+                      observed_value: "invalid_field",
+                      confidence: 0.9,
+                      frame_id: "frame-02"
+                    }
+                  ],
+                  unknowns: [],
+                  proposed_claims: []
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const frames = Array.from({ length: 4 }, (_, index) => ({
+      frameId: `frame-0${index + 1}`,
+      tSec: index + 1,
+      dataUrl: `data:image/jpeg;base64,FRAME${index + 1}`
+    }));
+
+    const result = await analyzeWithQwen({
+      cardId: "direct-video",
+      brief: { name: "Venue", category: "other", languages: ["ja", "en"] },
+      frames,
+      videoDataUrl: "data:video/mp4;base64,QUJDRA==",
+      useFixture: false
+    });
+
+    expect(result.trace.mode).toBe("live");
+    expect(result.data.frames).toHaveLength(4);
+    expect(result.data.frames.map(({ frameId }) => frameId)).toEqual(
+      frames.map(({ frameId }) => frameId)
+    );
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0][1]?.body)
+    ) as {
+      model: string;
+      max_tokens: number;
+      messages: Array<{ content: unknown }>;
+    };
+    expect(requestBody.model).toBe("qwen3.7-plus");
+    expect(requestBody.max_tokens).toBe(2400);
+    expect(requestBody.messages[1].content).toEqual(
+      expect.arrayContaining([
+        {
+          type: "video_url",
+          video_url: { url: "data:video/mp4;base64,QUJDRA==" },
+          fps: 1
+        }
+      ])
+    );
+  });
+
+  it("rejects an unsafe accessibility claim hidden in observed_value", async () => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.11";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            model: "qwen3.7-plus",
+            usage: {
+              prompt_tokens: 30,
+              completion_tokens: 10,
+              total_tokens: 40
+            },
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    observations: [
+                      {
+                        field: "entrance.door_operation",
+                        description_ja: "手動ドアが見えます",
+                        description_en: "A manual door is visible",
+                        status: "ai_observed",
+                        observation_type: "visible_fact",
+                        observed_value: "wheelchair accessible",
+                        confidence: 0.8,
+                        frame_id: "frame-01"
+                      }
+                    ],
+                    unknowns: [],
+                    proposed_claims: []
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+      )
+    );
+
+    const result = await analyzeWithQwen({
+      cardId: "unsafe-observed-value",
+      brief: { name: "Venue", category: "other", languages: ["ja", "en"] },
+      frames: [
+        {
+          frameId: "frame-01",
+          tSec: 1,
+          dataUrl: "data:image/jpeg;base64,REAL"
+        }
+      ],
+      useFixture: false
+    });
+
+    expect(result.trace).toMatchObject({
+      mode: "fallback",
+      ok: false,
+      errorCode: "semantic_invalid",
+      validation: "failed"
+    });
+    expect(result.data.items.every((item) => item.status === "unknown")).toBe(
+      true
+    );
+  });
+
+  it("does not apply known model rates to an unsupported override model", async () => {
     process.env.DASHSCOPE_API_KEY = "test-key";
     process.env.QWEN_MODEL = "another-model";
     process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";

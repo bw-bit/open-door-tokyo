@@ -2,6 +2,9 @@ export const MAX_VIDEO_FRAMES = 4;
 export const MAX_QWEN_FRAME_PAYLOAD_BYTES = 8_000_000;
 export const CLIENT_FRAME_PAYLOAD_TARGET_BYTES = 3_500_000;
 export const MAX_LOCAL_VIDEO_BYTES = 500_000_000;
+export const MAX_QWEN_VIDEO_BYTES = 10_000_000;
+export const MAX_QWEN_VIDEO_DATA_URL_CHARS = 10_000_000;
+export const MAX_QWEN_VIDEO_SOURCE_BYTES = 7_499_000;
 
 export interface UploadFrame {
   frameId: string;
@@ -12,6 +15,29 @@ export interface UploadFrame {
 
 const VIDEO_EXTENSION = /\.(mp4|mov)$/i;
 const FRAME_DATA_URL = /^data:image\/(?:jpeg|jpg|webp);base64,/;
+const VIDEO_DATA_URL =
+  /^data:video\/[a-z0-9.+-]+;base64,([a-z0-9+/]*={0,2})$/i;
+
+export function validateQwenVideoDataUrl(
+  value: string
+): "ok" | "invalid_video" | "payload_too_large" {
+  if (value.length >= MAX_QWEN_VIDEO_DATA_URL_CHARS) {
+    return "payload_too_large";
+  }
+  const match = VIDEO_DATA_URL.exec(value);
+  if (!match || match[1].length === 0 || match[1].length % 4 !== 0) {
+    return "invalid_video";
+  }
+  const padding =
+    match[1].endsWith("==") ? 2 : match[1].endsWith("=") ? 1 : 0;
+  const decodedBytes = (match[1].length / 4) * 3 - padding;
+  if (!Number.isSafeInteger(decodedBytes) || decodedBytes <= 0) {
+    return "invalid_video";
+  }
+  return decodedBytes < MAX_QWEN_VIDEO_BYTES
+    ? "ok"
+    : "payload_too_large";
+}
 
 export function validateSelectedVideo(file: {
   name: string;

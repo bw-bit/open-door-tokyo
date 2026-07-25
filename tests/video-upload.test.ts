@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_QWEN_FRAME_PAYLOAD_BYTES,
+  MAX_QWEN_VIDEO_DATA_URL_CHARS,
   framePayloadBytes,
   representativeFrameTimes,
+  validateQwenVideoDataUrl,
   validateRealUploadFrames,
   validateSelectedVideo
 } from "@/lib/video-upload";
@@ -66,5 +68,28 @@ describe("smartphone video upload boundaries", () => {
     expect(
       validateRealUploadFrames([{ frameId: "large", tSec: 0, dataUrl }])
     ).toBe("payload_too_large");
+  });
+
+  it("accepts only base64 video data URLs whose encoded string is under 10MB", () => {
+    expect(
+      validateQwenVideoDataUrl("data:video/mp4;base64,QUJDRA==")
+    ).toBe("ok");
+    expect(
+      validateQwenVideoDataUrl(
+        "data:video/quicktime;base64,QUJDRA=="
+      )
+    ).toBe("ok");
+    expect(
+      validateQwenVideoDataUrl("data:application/mp4;base64,QUJDRA==")
+    ).toBe("invalid_video");
+    expect(
+      validateQwenVideoDataUrl("data:video/mp4;base64,not base64")
+    ).toBe("invalid_video");
+    const prefix = "data:video/mp4;base64,";
+    const oversized =
+      prefix +
+      "A".repeat(MAX_QWEN_VIDEO_DATA_URL_CHARS - prefix.length);
+    expect(oversized).toHaveLength(MAX_QWEN_VIDEO_DATA_URL_CHARS);
+    expect(validateQwenVideoDataUrl(oversized)).toBe("payload_too_large");
   });
 });

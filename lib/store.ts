@@ -1,7 +1,12 @@
 import "server-only";
 
 import { get, put } from "@vercel/blob";
-import { getDemoAnalysisCard, getDemoPublishedCard } from "./fixtures";
+import {
+  getDemoAnalysisCard,
+  getDemoPublishedCard,
+  getRestroomLiveProofCard,
+  RESTROOM_LIVE_PROOF_CARD_ID
+} from "./fixtures";
 import type { AccessCard } from "./types";
 
 declare global {
@@ -66,6 +71,9 @@ export async function getCard(
     return options.publishedFixture
       ? getDemoPublishedCard()
       : getDemoAnalysisCard();
+  }
+  if (cardId === RESTROOM_LIVE_PROOF_CARD_ID) {
+    return getRestroomLiveProofCard();
   }
 
   return null;

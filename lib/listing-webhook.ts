@@ -7,6 +7,7 @@ import type {
   LocalizedText,
   Provenance
 } from "./types";
+import { parseReferenceEstimate } from "./reference-estimate";
 import { listingPublishPayloadSchema } from "./listing-contract";
 
 export type ListingSyncStatus =
@@ -133,7 +134,7 @@ function evidenceFor(
   return {
     sourceType: "public_card",
     sourceLabel: {
-      ja: "OPEN DOOR TOKYO公開カード（未確認）",
+      ja: "OPEN DOOR TOKYO公開カード（要確認）",
       en: "OPEN DOOR TOKYO public card (unconfirmed)"
     },
     observedAt: card.updatedAt,
@@ -188,9 +189,32 @@ export function toListingAccessCard(
   const step = item(card, "entrance.step_presence");
   const stepEvidence = supportedProvenance(step);
   const measuredWidth = item(card, "entrance.door_width_cm");
+  const doorType = item(card, "entrance.door_type");
+  const doorOperation = item(card, "entrance.door_operation");
+  const estimatedWidth = measuredWidth
+    ? parseReferenceEstimate(measuredWidth.value)
+    : null;
   const hasMeasuredWidth =
     supportedProvenance(measuredWidth)?.kind === "staff_input" &&
     typeof measuredWidth?.value === "number";
+  const doorSummaryJa = [doorType, doorOperation]
+    .filter((entry) => entry && entry.status !== "unknown")
+    .map((entry) => entry!.description.ja)
+    .join(" ");
+  const doorSummaryEn = [doorType, doorOperation]
+    .filter((entry) => entry && entry.status !== "unknown")
+    .map((entry) => entry!.description.en)
+    .join(" ");
+  const widthSummaryJa = hasMeasuredWidth
+    ? `入口幅は実測${measuredWidth!.value}cmです。`
+    : estimatedWidth
+      ? `入口幅は動画から約${estimatedWidth.minCm}〜${estimatedWidth.maxCm}cmと推定しています（実測ではありません）。`
+      : "入口幅は要確認です。";
+  const widthSummaryEn = hasMeasuredWidth
+    ? `The measured entrance width is ${measuredWidth!.value} cm.`
+    : estimatedWidth
+      ? `The entrance width is estimated from video at approx. ${estimatedWidth.minCm}-${estimatedWidth.maxCm} cm (not measured).`
+      : "The entrance width needs confirmation.";
 
   const features: ListingFeature[] = [
     {
@@ -206,7 +230,7 @@ export function toListingAccessCard(
       key: "stroller_access",
       status: "unconfirmed",
       detail: {
-        ja: "ベビーカーでの利用可否は未確認です。",
+        ja: "ベビーカーでの利用可否は認定しません。段差や幅の具体情報をご確認ください。",
         en: "Stroller suitability is unconfirmed."
       },
       evidence: evidenceFor(card, publicUrl)
@@ -218,7 +242,7 @@ export function toListingAccessCard(
       "communication.writing_support",
       { ja: "店舗スタッフが筆談対応を確認しました。", en: "Venue staff confirmed written communication support." },
       { ja: "店舗スタッフが筆談対応なしと回答しました。", en: "Venue staff reported that written communication support is unavailable." },
-      { ja: "筆談対応は未確認です。", en: "Written communication support is unconfirmed." }
+      { ja: "筆談対応は要確認です。", en: "Written communication support needs confirmation." }
     ),
     booleanFeature(
       card,
@@ -227,7 +251,7 @@ export function toListingAccessCard(
       "communication.english_menu",
       { ja: "英語メニューを確認しました。", en: "An English menu was confirmed." },
       { ja: "英語メニューはありません。", en: "An English menu is not available." },
-      { ja: "英語メニューは未確認です。", en: "English-menu availability is unconfirmed." },
+      { ja: "英語メニューは要確認です。", en: "English-menu availability needs confirmation." },
       true
     ),
     {
@@ -243,7 +267,7 @@ export function toListingAccessCard(
           ? { ja: "店舗スタッフが入口に段差なしと確認しました。", en: "Venue staff confirmed no entrance step." }
           : stepEvidence?.kind === "staff_input" && step?.value === true
             ? { ja: "店舗スタッフが入口の段差ありと確認しました。", en: "Venue staff confirmed an entrance step." }
-            : { ja: "入口の段差有無は未確認です。", en: "Entrance step status is unconfirmed." },
+            : { ja: "入口の段差有無は要確認です。", en: "Entrance step status needs confirmation." },
       evidence: evidenceFor(
         card,
         publicUrl,
@@ -258,8 +282,17 @@ export function toListingAccessCard(
             ja: `入口幅は${measuredWidth!.value}cmです。「広い」という適合判定は行いません。`,
             en: `The measured entrance width is ${measuredWidth!.value} cm; this is not a suitability certification.`
           }
-        : { ja: "入口幅は未確認です。", en: "Entrance width is unconfirmed." },
-      evidence: evidenceFor(card, publicUrl, hasMeasuredWidth ? measuredWidth : undefined)
+        : estimatedWidth
+          ? {
+              ja: `入口幅は動画から約${estimatedWidth.minCm}〜${estimatedWidth.maxCm}cmと推定しています。実測ではありません。`,
+              en: `The entrance width is estimated from video at approx. ${estimatedWidth.minCm}-${estimatedWidth.maxCm} cm; it is not measured.`
+            }
+          : { ja: "入口幅は要確認です。", en: "Entrance width needs confirmation." },
+      evidence: evidenceFor(
+        card,
+        publicUrl,
+        hasMeasuredWidth || estimatedWidth ? measuredWidth : undefined
+      )
     },
     booleanFeature(
       card,
@@ -268,7 +301,7 @@ export function toListingAccessCard(
       "path_to_seat.chairs_movable",
       { ja: "可動椅子を確認しました。", en: "Movable seating was confirmed." },
       { ja: "椅子は移動できません。", en: "The chairs cannot be moved." },
-      { ja: "可動席は未確認です。", en: "Movable seating is unconfirmed." },
+      { ja: "可動席は要確認です。", en: "Movable seating needs confirmation." },
       true
     )
   ];
@@ -283,11 +316,11 @@ export function toListingAccessCard(
     accessCards: {
       ja: {
         summary:
-          "店舗動画とスタッフ確認に基づく具体情報です。認定や個人ごとの利用可否判定ではありません。"
+          `店舗動画とスタッフ確認に基づく具体情報です。${doorSummaryJa ? ` ${doorSummaryJa}` : ""} ${widthSummaryJa} 認定や個人ごとの利用可否判定ではありません。`
       },
       en: {
         summary:
-          "Concrete facts from venue video and staff review; not a certification or individual suitability decision."
+          `Concrete facts from venue video and staff review.${doorSummaryEn ? ` ${doorSummaryEn}` : ""} ${widthSummaryEn} This is not a certification or individual suitability decision.`
       }
     },
     features,

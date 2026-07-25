@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { getDemoPublishedCard } from "@/lib/fixtures";
+import { getDemoAnalysisCard, getDemoPublishedCard } from "@/lib/fixtures";
 import {
   syncPublishedCard,
   toListingAccessCard
@@ -117,6 +117,22 @@ describe("published-card listing sync", () => {
     ).toBe(true);
     expect(JSON.stringify(card)).not.toContain("車椅子対応");
     expect(JSON.stringify(card)).not.toContain("wheelchair accessible");
+  });
+
+  it("carries video-estimated width and door operation into the map summary", () => {
+    const card = toListingAccessCard(
+      getDemoAnalysisCard(),
+      "https://open-door.example/c/demo-cafe"
+    );
+    expect(card?.accessCards.ja.summary).toContain("手前に引いて開ける");
+    expect(card?.accessCards.ja.summary).toContain("約75〜90cm");
+    expect(card?.accessCards.ja.summary).toContain("実測ではありません");
+    const width = card?.features.find(({ key }) => key === "wide_entrance");
+    expect(width).toMatchObject({
+      status: "unconfirmed",
+      evidence: { sourceType: "on_site_observation" }
+    });
+    expect(width?.detail.ja).toContain("動画から約75〜90cm");
   });
 
   it("maps evidenced boolean false to not_available, never confirmed", () => {
