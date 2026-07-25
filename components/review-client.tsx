@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { providerModeLabels } from "@/lib/status";
 import type { AccessCard } from "@/lib/types";
 import { EvidenceRow } from "./evidence-row";
@@ -14,6 +14,12 @@ type ConfirmationForm = {
   passageWidth: string;
   writingSupport: string;
   englishMenu: string;
+};
+
+type ManualCorrection = {
+  descriptionJa: string;
+  descriptionEn: string;
+  markUnknown: boolean;
 };
 
 const blankConfirmations: ConfirmationForm = {
@@ -87,7 +93,49 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
   const [confirmationForm, setConfirmationForm] = useState<ConfirmationForm>(
     isDemo ? demoConfirmations : blankConfirmations
   );
+  const [corrections, setCorrections] = useState<
+    Record<string, ManualCorrection>
+  >({});
+  const [origin, setOrigin] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
+  const [listingSync, setListingSync] = useState<
+    "not_configured" | "delivered" | "rejected" | "timeout" | "transport_failed"
+  >("not_configured");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  function correctEvidence(field: string, correction: ManualCorrection) {
+    setCorrections((current) => ({ ...current, [field]: correction }));
+    setCard((current) => ({
+      ...current,
+      items: current.items.map((item) =>
+        item.field === field
+          ? {
+              ...item,
+              description: {
+                ja: correction.descriptionJa,
+                en: correction.descriptionEn
+              },
+              status: correction.markUnknown ? "unknown" : "staff_stated",
+              confidence: correction.markUnknown ? 0 : 1,
+              confirmedByStaff: !correction.markUnknown
+            }
+          : item
+      )
+    }));
+  }
+
+  async function copyText(label: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(`${label}をコピーしました`);
+    } catch {
+      setCopyStatus("コピーできませんでした。表示欄から選択してください。");
+    }
+  }
 
   const sections = [
     ["entrance", "入口", "ENTRANCE"],
@@ -112,7 +160,10 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
           cardId: card.brief.cardId,
           reviewerName,
           attestation: attested,
-          confirmations
+          confirmations,
+          corrections: Object.entries(corrections).map(
+            ([field, correction]) => ({ field, ...correction })
+          )
         })
       });
       if (!response.ok) throw new Error("スタッフ確認を保存できませんでした");
@@ -148,9 +199,11 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
       const result = (await response.json()) as {
         card: AccessCard;
         publicPath: string;
+        listingSync: typeof listingSync;
       };
       setCard(result.card);
       setPublishedPath(result.publicPath);
+      setListingSync(result.listingSync);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "公開に失敗しました");
     } finally {
@@ -161,6 +214,15 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
   const ready = ["card_built", "sandbox_checked", "published"].includes(card.state);
   const blockedClaim = card.safetyAudit.blocked[0];
   const sandboxMode = card.sandbox?.mode ?? "not_configured";
+  const publicUrl =
+    publishedPath && origin ? `${origin}${publishedPath}` : "";
+  const embedUrl = publicUrl ? `${publicUrl}?embed=1` : "";
+  const embedCode = embedUrl
+    ? `<iframe src="${embedUrl}" title="${card.brief.name} Access Card" loading="lazy" style="width:100%;min-height:720px;border:0"></iframe>`
+    : "";
+  const mapsCopy = publicUrl
+    ? `来店前のアクセス情報（入口・段差・通路・コミュニケーション）: ${publicUrl}`
+    : "";
 
   return (
     <>
@@ -200,7 +262,13 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
 
           <div className="evidence-list">
             {sectionItems.map((item) => (
-              <EvidenceRow item={item} frames={card.frames} key={item.id} />
+              <EvidenceRow
+                item={item}
+                frames={card.frames}
+                key={item.id}
+                editable={!ready}
+                onCorrect={correctEvidence}
+              />
             ))}
           </div>
         </section>
@@ -401,6 +469,11 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
             <span className="success-label">PUBLISHED</span>
             <h2 id="published-title">来店前 Access Card を公開しました</h2>
             <p>スマートフォンでQRコードを読み、証拠付きの日英カードを確認できます。</p>
+            <p className={`listing-sync listing-sync-${listingSync}`}>
+              {listingSync === "delivered"
+                ? "利用者向けマップにも自動掲載しました。"
+                : "マップ自動掲載先は未接続です。下のURL・掲載文・埋め込みHTMLはすぐ使えます。"}
+            </p>
             <img
               className="qr-image"
               src={`/api/qr?path=${encodeURIComponent(publishedPath)}`}
@@ -409,6 +482,44 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
             <a className="button primary" href={publishedPath} target="_blank" rel="noreferrer">
               公開カードを見る <span aria-hidden="true">↗</span>
             </a>
+            {publicUrl && (
+              <div className="share-tools">
+                <strong>Googleマップ・店舗サイトに掲載</strong>
+                <label>
+                  <span>公開URL</span>
+                  <input value={publicUrl} readOnly aria-label="公開URL" />
+                </label>
+                <div className="share-actions">
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => copyText("公開URL", publicUrl)}
+                  >
+                    URLをコピー
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => copyText("Googleマップ掲載文", mapsCopy)}
+                  >
+                    Google掲載文
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => copyText("埋め込みコード", embedCode)}
+                  >
+                    埋め込みHTML
+                  </button>
+                </div>
+                <textarea
+                  value={embedCode}
+                  readOnly
+                  aria-label="店舗サイト用埋め込みHTML"
+                />
+                {copyStatus && <small role="status">{copyStatus}</small>}
+              </div>
+            )}
             <button className="text-button" onClick={() => setPublishedPath("")} type="button">
               レビュー画面へ戻る
             </button>

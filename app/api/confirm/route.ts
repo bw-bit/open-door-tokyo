@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createApprovalToken } from "@/lib/approval";
 import { applyStaffConfirmations } from "@/lib/confirmation";
 import { auditInDaytona, phraseWithAiAnd } from "@/lib/providers";
+import { auditClaim } from "@/lib/safety/deterministic";
 import { getCard, saveCard } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -18,7 +19,15 @@ const schema = z.object({
       value: z.union([z.string(), z.number(), z.boolean()]),
       method: z.enum(["staff_stated", "staff_measured"])
     })
-  ).min(1)
+  ).min(1),
+  corrections: z.array(
+    z.object({
+      field: z.string().min(1).max(80),
+      descriptionJa: z.string().trim().min(1).max(240),
+      descriptionEn: z.string().trim().min(1).max(240),
+      markUnknown: z.boolean()
+    }).strict()
+  ).max(13).default([])
 }).refine(
   (value) =>
     value.confirmations.some(
@@ -44,10 +53,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "card_not_found" }, { status: 404 });
   }
 
+  const correctionFields = parsed.data.corrections.map(({ field }) => field);
+  if (
+    new Set(correctionFields).size !== correctionFields.length ||
+    correctionFields.some(
+      (field) => !previous.items.some((item) => item.field === field)
+    ) ||
+    parsed.data.corrections.some(
+      (correction) =>
+        auditClaim(correction.descriptionJa) ||
+        auditClaim(correction.descriptionEn)
+    )
+  ) {
+    return NextResponse.json(
+      { error: "invalid_or_unsupported_correction" },
+      { status: 400 }
+    );
+  }
+
   const card = applyStaffConfirmations(
     previous,
     parsed.data.confirmations,
-    parsed.data.reviewerName
+    parsed.data.reviewerName,
+    parsed.data.corrections
   );
 
   const phrased = await phraseWithAiAnd(card);

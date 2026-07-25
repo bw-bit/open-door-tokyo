@@ -6,6 +6,7 @@ import {
   indexWithNosana
 } from "@/lib/providers";
 import { saveCard } from "@/lib/store";
+import { validateRealUploadFrames } from "@/lib/video-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,14 +21,32 @@ const schema = z.object({
   }),
   frames: z.array(
     z.object({
-      frameId: z.string(),
+      frameId: z.string().min(1).max(80),
       tSec: z.number().nonnegative(),
-      dataUrl: z.string().optional(),
-      fixtureUrl: z.string().optional()
+      dataUrl: z.string().max(8_000_000).optional(),
+      fixtureUrl: z.string().max(2_048).optional()
     })
-  ).min(1).max(8),
-  transcript: z.string().optional(),
+  ).min(1).max(4),
+  transcript: z.string().max(8_000).optional(),
   useFixture: z.boolean().optional()
+}).superRefine((value, context) => {
+  const frameIds = value.frames.map(({ frameId }) => frameId);
+  if (new Set(frameIds).size !== frameIds.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "frame IDs must be unique",
+      path: ["frames"]
+    });
+  }
+  value.frames.forEach((frame, index) => {
+    if (Boolean(frame.dataUrl) === Boolean(frame.fixtureUrl)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "exactly one frame source is required",
+        path: ["frames", index]
+      });
+    }
+  });
 });
 
 const SAMPLE_CARD_IDS = new Set(["demo-cafe"]);
@@ -52,6 +71,20 @@ export async function POST(request: Request) {
   }
 
   const verifiedSample = isVerifiedSample(parsed.data);
+  if (!verifiedSample) {
+    const frameValidation = validateRealUploadFrames(parsed.data.frames);
+    if (frameValidation !== "ok") {
+      return NextResponse.json(
+        {
+          error:
+            frameValidation === "payload_too_large"
+              ? "payload_too_large"
+              : "invalid_upload_frames"
+        },
+        { status: frameValidation === "payload_too_large" ? 413 : 400 }
+      );
+    }
+  }
   const input = {
     ...parsed.data,
     // A client hint is never sufficient to select fixture facts.

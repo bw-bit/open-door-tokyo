@@ -9,12 +9,12 @@ export default async function AccessCardPage({
   searchParams
 }: {
   params: Promise<{ cardId: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; embed?: string }>;
 }) {
   const [{ cardId }, query] = await Promise.all([params, searchParams]);
   const card = await getCard(cardId, { publishedFixture: true });
   if (!card) notFound();
   if (card.state !== "published" || !card.publishedAt) notFound();
   const lang = query.lang === "en" ? "en" : "ja";
-  return <PublicCard card={card} lang={lang} />;
+  return <PublicCard card={card} lang={lang} embed={query.embed === "1"} />;
 }

@@ -57,6 +57,8 @@ https://open-door-tokyo.vercel.app
 - **Nosana:** read-only verification of an existing evidence-index job; paid submission is isolated behind explicit budget and approval controls.
 - **Qoder:** development evidence through task decomposition, Expert Panel review, and Repo Wiki; it is not misrepresented as a runtime provider.
 - Runtime traces distinguish `LIVE`, `VERIFIED SAMPLE`, `FALLBACK`, and `NOT CONFIGURED`. Sponsor-credit reservations fail closed when cap, price, estimate, or hard-limit state is unknown.
+- Staff can manually correct the bilingual AI description or return a field to `unknown` while retaining the original video provenance.
+- Publication produces a QR, public URL, Google listing copy, iframe embed, and an optional signed, idempotent webhook for automatic consumer-map listing.
 
 ## Required material checklist
 
@@ -75,22 +77,22 @@ https://open-door-tokyo.vercel.app
 
 ### Demo and evidence
 
-- ☑ Demo recording completed and technically reviewed (30.36 seconds)
-- ☐ Desktop and mobile screenshots selected
-- ☐ Capture → evidence review → staff confirmation → public card flow rehearsed
-- ☐ Safety-audit moment showing a blocked unsupported claim included
-- ☐ QR-linked bilingual public card shown
-- ☐ Provider trace modes shown honestly
-- ☐ Sponsor integration code paths and evidence prepared for judges
+- ☑ Demo recording completed and technically reviewed (27.16 seconds)
+- ☑ Desktop and mobile screenshots selected
+- ☑ Capture → evidence review → staff confirmation → public card flow rehearsed
+- ☑ Safety-audit moment showing a blocked unsupported claim included
+- ☑ QR-linked bilingual public card shown
+- ☑ Provider trace modes shown honestly
+- ☑ Sponsor integration code paths and evidence prepared for judges
 
 ### Release and repository hygiene
 
-- ☐ Public repository created and repository URL inserted above
-- ☐ `.env.local`, credentials, private keys, tokens, and local deployment metadata excluded from the public repository
-- ☐ README setup and no-credential demo instructions verified
-- ☐ License and required attribution files verified
-- ☐ Production URL opened in an unauthenticated browser
-- ☐ Final test, build, browser-flow, and secret-hygiene checks recorded
+- ☑ Public repository created and repository URL inserted above
+- ☑ `.env.local`, credentials, private keys, tokens, and local deployment metadata excluded from the public repository
+- ☑ README setup and no-credential demo instructions verified
+- ☑ License and required attribution files verified
+- ☑ Production URL opened in an unauthenticated browser
+- ☑ Final test, build, browser-flow, and secret-hygiene checks recorded
 
 ## Three-minute demo arc
 

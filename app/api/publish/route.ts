@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyApprovalToken } from "@/lib/approval";
+import { syncPublishedCard } from "@/lib/listing-webhook";
 import { canPublish } from "@/lib/safety/deterministic";
 import { getCard, saveCard } from "@/lib/store";
 
@@ -55,10 +56,12 @@ export async function POST(request: Request) {
   card.lastVerifiedAt = now.toISOString().slice(0, 10);
   card.updatedAt = now.toISOString();
   await saveCard(card);
+  const listingSync = await syncPublishedCard(card);
 
   return NextResponse.json({
     card,
     approvedBy: approval.reviewerName,
-    publicPath: `/c/${encodeURIComponent(card.brief.cardId)}`
+    publicPath: `/c/${encodeURIComponent(card.brief.cardId)}`,
+    listingSync
   });
 }

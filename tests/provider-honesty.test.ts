@@ -15,8 +15,10 @@ import { phraseWithAiAnd } from "@/lib/providers/aiand";
 import { auditInDaytona } from "@/lib/providers/daytona";
 import { auditWithGmi } from "@/lib/providers/gmi";
 import { analyzeWithQwen } from "@/lib/providers/qwen";
+import { reconcile } from "@/lib/guard";
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
   delete process.env.DASHSCOPE_API_KEY;
   delete process.env.QWEN_BASE_URL;
@@ -37,7 +39,6 @@ describe("provider mode honesty", () => {
   it("applies a validated Qwen response before reporting LIVE", async () => {
     process.env.DASHSCOPE_API_KEY = "test-key";
     process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";
-    process.env.QWEN_MODEL = "test-model";
     process.env.QWEN_REGION = "intl";
     process.env.QWEN_WORKSPACE_ID = "test-workspace";
     process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
@@ -45,8 +46,12 @@ describe("provider mode honesty", () => {
       new Response(
         JSON.stringify({
           id: "request-live",
-          model: "test-model",
-          usage: { total_tokens: 42 },
+          model: "qwen3.6-flash",
+          usage: {
+            prompt_tokens: 30,
+            completion_tokens: 12,
+            total_tokens: 42
+          },
           choices: [
             {
               message: {
@@ -103,6 +108,28 @@ describe("provider mode honesty", () => {
     expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({
       "X-DashScope-WorkSpace": "test-workspace"
     });
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0][1]?.body)
+    ) as {
+      enable_thinking?: boolean;
+      max_tokens?: number;
+      messages?: Array<{ content?: string | Array<{ text?: string }> }>;
+    };
+    expect(requestBody.enable_thinking).toBe(false);
+    expect(requestBody.max_tokens).toBe(768);
+    expect(JSON.stringify(requestBody.messages)).toContain(
+      "entrance.step_presence"
+    );
+    expect(result.data.items[0].provenance[0]).toMatchObject({
+      kind: "video_frame",
+      frameId: "frame-01",
+      tSec: 3
+    });
+    expect(result.data.unknowns).toContain("restroom.interior_equipment");
+    expect(vi.mocked(reconcile)).toHaveBeenCalledWith({
+      reservationId: "test-reservation",
+      actualCostUsd: 0.0000255
+    });
   });
 
   it("does not call Qwen when its configured region is unsupported", async () => {
@@ -148,6 +175,155 @@ describe("provider mode honesty", () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.headers).not.toHaveProperty("X-DashScope-WorkSpace");
     expect(JSON.parse(String(init.body)).model).toBe("qwen3.6-flash");
+    expect(JSON.parse(String(init.body)).enable_thinking).toBe(false);
+  });
+
+  it.each([
+    [
+      "unknown field",
+      JSON.stringify({
+        observations: [{
+          field: "entrance.invented_field",
+          description_ja: "存在しない項目",
+          description_en: "Invented field",
+          status: "ai_observed",
+          confidence: 0.9,
+          frame_id: "frame-01"
+        }],
+        unknowns: [],
+        proposed_claims: []
+      })
+    ],
+    ["malformed JSON", "{not-json"]
+  ])("fails closed for a Qwen response with %s", async (_label, content) => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      model: "qwen3.6-flash",
+      usage: {
+        prompt_tokens: 12,
+        completion_tokens: 8,
+        total_tokens: 20
+      },
+      choices: [{ message: { content } }]
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await analyzeWithQwen({
+      cardId: `invalid-${_label}`,
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [{
+        frameId: "frame-01",
+        tSec: 2,
+        dataUrl: "data:image/jpeg;base64,REAL"
+      }],
+      useFixture: false
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.trace).toMatchObject({
+      mode: "fallback",
+      ok: false,
+      errorCode: "schema_invalid",
+      validation: "failed"
+    });
+    expect(result.data.items.every((item) => item.status === "unknown")).toBe(true);
+    expect(result.data.frames[0].frameId).toBe("frame-01");
+  });
+
+  it.each([
+    ["missing", undefined],
+    [
+      "inconsistent",
+      { prompt_tokens: 10, completion_tokens: 5, total_tokens: 99 }
+    ],
+    [
+      "negative",
+      { prompt_tokens: -1, completion_tokens: 5, total_tokens: 4 }
+    ],
+    [
+      "outside the supported pricing window",
+      {
+        prompt_tokens: 256_000,
+        completion_tokens: 1,
+        total_tokens: 256_001
+      }
+    ]
+  ])("quarantines Qwen reservation when usage is %s", async (_label, usage) => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      model: "qwen3.6-flash",
+      ...(usage ? { usage } : {}),
+      choices: [{ message: { content: JSON.stringify({
+        observations: [{
+          field: "entrance.step_presence",
+          description_ja: "入口に段差が見えます",
+          description_en: "A step is visible at the entrance",
+          status: "ai_observed",
+          confidence: 0.8,
+          frame_id: "frame-01"
+        }],
+        unknowns: [],
+        proposed_claims: []
+      }) } }]
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await analyzeWithQwen({
+      cardId: `usage-${_label}`,
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [{
+        frameId: "frame-01",
+        tSec: 2,
+        dataUrl: "data:image/jpeg;base64,REAL"
+      }],
+      useFixture: false
+    });
+    expect(result.trace.errorCode).toBe("semantic_invalid");
+    expect(vi.mocked(reconcile)).toHaveBeenCalledWith({
+      reservationId: "test-reservation",
+      actualCostUsd: null
+    });
+  });
+
+  it("does not apply qwen3.6-flash rates to an override model", async () => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.QWEN_MODEL = "another-model";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      model: "another-model",
+      usage: {
+        prompt_tokens: 10,
+        completion_tokens: 5,
+        total_tokens: 15
+      },
+      choices: [{ message: { content: JSON.stringify({
+        observations: [{
+          field: "entrance.step_presence",
+          description_ja: "入口に段差が見えます",
+          description_en: "A step is visible at the entrance",
+          status: "ai_observed",
+          confidence: 0.8,
+          frame_id: "frame-01"
+        }],
+        unknowns: [],
+        proposed_claims: []
+      }) } }]
+    }), { status: 200 })));
+    const result = await analyzeWithQwen({
+      cardId: "override-model",
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [{
+        frameId: "frame-01",
+        tSec: 2,
+        dataUrl: "data:image/jpeg;base64,REAL"
+      }],
+      useFixture: false
+    });
+    expect(result.trace.errorCode).toBe("semantic_invalid");
+    expect(vi.mocked(reconcile)).toHaveBeenCalledWith({
+      reservationId: "test-reservation",
+      actualCostUsd: null
+    });
   });
 
   it("never substitutes demo facts or frames for a real upload when Qwen is not configured", async () => {

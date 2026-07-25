@@ -73,6 +73,7 @@ export async function openAICompatibleChat(input: {
   model: string;
   messages: ChatMessage[];
   maxTokens: number;
+  enableThinking?: boolean;
   extraHeaders?: { "X-DashScope-WorkSpace"?: string };
   responseFormat?: { type: "json_object" };
   timeoutMs?: number;
@@ -115,6 +116,9 @@ export async function openAICompatibleChat(input: {
             model: input.model,
             messages: input.messages,
             max_tokens: input.maxTokens,
+            ...(input.enableThinking === undefined
+              ? {}
+              : { enable_thinking: input.enableThinking }),
             temperature: 0,
             response_format: input.responseFormat
           }),

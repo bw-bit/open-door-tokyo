@@ -16,7 +16,20 @@ test("sample video becomes a reviewed and published evidence card", async ({
   await expect(page.getByText("「車椅子で利用可能」")).toBeVisible();
   await expect(page.getByText("根拠のある表現へ書換")).toBeVisible();
 
-  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "AI解析を手動で修正" })
+    .nth(3)
+    .click();
+  await page
+    .getByLabel("ドアの種類の日本語説明")
+    .fill("スタッフ確認: 手動で開ける引き戸です");
+  await page
+    .getByLabel("ドアの種類の英語説明")
+    .fill("Staff confirmed: this is a manually opened sliding door");
+
+  await page
+    .getByRole("checkbox", { name: /映像・実測値・未確認項目を確認/ })
+    .check();
   await page
     .getByRole("button", { name: "店舗スタッフとして確認する" })
     .click();
@@ -28,6 +41,13 @@ test("sample video becomes a reviewed and published evidence card", async ({
   await expect(
     page.getByRole("heading", { name: "来店前 Access Card を公開しました" })
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "URLをコピー" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Google掲載文" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "埋め込みHTML" })
+  ).toBeVisible();
 
   const publicLink = page.getByRole("link", { name: /公開カードを見る/ });
   const href = await publicLink.getAttribute("href");
@@ -35,8 +55,19 @@ test("sample video becomes a reviewed and published evidence card", async ({
 
   await page.goto(href!);
   await expect(page.getByText("これは認定や適合判定ではありません")).toBeVisible();
+  await expect(
+    page.getByText("スタッフ確認: 手動で開ける引き戸です")
+  ).toBeVisible();
   await expect(page.getByText("まだ確認できていないこと")).toBeVisible();
   await expect(page.getByText("We do not certify. We clarify.")).toBeVisible();
+
+  await page.goto(`${href!}?embed=1`);
+  await expect(
+    page.getByText("スタッフ確認: 手動で開ける引き戸です")
+  ).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Language" })).toHaveCount(
+    0
+  );
 });
 
 test("publishing without explicit human confirmation is rejected", async ({
@@ -111,4 +142,85 @@ test("useFixture with uploaded frame data is treated as a real upload", async ({
         item.provenance.length === 0
     )
   ).toBe(true);
+});
+
+test("mobile video selection extracts a bounded real-upload payload", async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium");
+  await page.goto("/capture");
+  let analyzePayload: {
+    frames: Array<{ dataUrl?: string; fixtureUrl?: string }>;
+    useFixture: boolean;
+  } | null = null;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/analyze") && request.method() === "POST") {
+      analyzePayload = request.postDataJSON();
+    }
+  });
+
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles("public/demo/cafe-tour.mp4");
+  await expect(page.getByText("UPLOAD")).toBeVisible();
+  await expect(page.getByText("cafe-tour.mp4")).toBeVisible();
+  await expect(page.getByText(/最大4フレーム/)).toBeVisible();
+  await page.getByRole("button", { name: "証拠を抽出する" }).click();
+  await expect(page.getByRole("status")).toBeVisible();
+  await page.waitForURL(/\/review\/venue-/, { timeout: 30_000 });
+
+  expect(analyzePayload).not.toBeNull();
+  expect(analyzePayload!.useFixture).toBe(false);
+  expect(analyzePayload!.frames).toHaveLength(4);
+  expect(
+    analyzePayload!.frames.every((frame) =>
+      frame.dataUrl?.startsWith("data:image/jpeg;base64,")
+    )
+  ).toBe(true);
+  expect(
+    analyzePayload!.frames.every((frame) => frame.fixtureUrl === undefined)
+  ).toBe(true);
+  expect(
+    new TextEncoder().encode(JSON.stringify(analyzePayload!.frames)).byteLength
+  ).toBeLessThan(8_000_000);
+});
+
+test("mobile upload gives a clear error for an unsupported file", async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium");
+  await page.goto("/capture");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "not-a-video.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("not a video")
+  });
+  await expect(page.locator(".error-message")).toHaveText(
+    "MP4またはMOV形式の動画を選んでください。"
+  );
+  await expect(page.getByText("SAMPLE")).toBeVisible();
+});
+
+test("real upload API rejects fixture frame URLs", async ({ request }) => {
+  const response = await request.post("/api/analyze", {
+    data: {
+      cardId: "real-upload-with-fixture-url",
+      brief: {
+        name: "REAL UPLOAD",
+        category: "cafe",
+        languages: ["ja", "en"]
+      },
+      frames: [
+        {
+          frameId: "fixture-frame",
+          tSec: 1,
+          fixtureUrl: "/demo/frames/01-entrance.png"
+        }
+      ],
+      transcript: "",
+      useFixture: false
+    }
+  });
+  expect(response.status()).toBe(400);
+  expect((await response.json()).error).toBe("invalid_upload_frames");
 });

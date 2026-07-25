@@ -19,7 +19,7 @@ We do not certify. We clarify.
 
 ## Solution
 
-店舗スタッフが入口から席までを20秒撮影すると、OPEN DOOR TOKYOが証拠フレームを抽出し、観察できた事実と不足情報を整理します。映像から測れない寸法は推測せず、スタッフへ確認を求めます。「車椅子で利用可能」のような包括的な断定は安全ルールで止め、根拠のある具体表現へ書き換えます。スタッフが内容を確認した後だけ、QRで共有できる日英 Access Card を公開します。
+店舗スタッフが入口から席までを20秒撮影すると、OPEN DOOR TOKYOが最大4枚の証拠フレームを抽出し、Qwen 3.6 Flash VLで観察できた事実と不足情報を整理します。映像から測れない寸法は推測せず、スタッフへ確認を求めます。「車椅子で利用可能」のような包括的な断定は安全ルールで止め、根拠のある具体表現へ書き換えます。スタッフはAIの記述を日英で手動修正でき、確認後だけ、QR、公開URL、Google掲載文、iframe埋め込みを備えた日英 Access Card を公開します。
 
 ## Why it is an agent
 
@@ -34,13 +34,16 @@ We do not certify. We clarify.
 - Daytona: 生成された公開カードの隔離サンドボックス検査
 - Qoder: Expert Panel向けタスク分解とRepo Wiki構成
 
+実行画面は `LIVE`、`VERIFIED SAMPLE`、`FALLBACK`、`NOT CONFIGURED`
+を区別し、認証確認やサンプルをライブ生成として表示しません。
+
 ## Live demo
 
 https://open-door-tokyo.vercel.app
 
 ## Repository
 
-[当日、提出用GitHub URLを入力]
+https://github.com/bw-bit/open-door-tokyo
 
 ## 3-minute demo promise
 
@@ -48,5 +51,4 @@ https://open-door-tokyo.vercel.app
 
 ## English summary
 
-OPEN DOOR TOKYO turns a 20-second walkthrough video from a small Tokyo venue into a bilingual, evidence-linked Access Card. It separates AI observations, staff measurements, and unknowns; blocks unsupported claims such as “wheelchair accessible”; and publishes only after explicit human confirmation. Qwen handles multimodal extraction, Nosana indexes evidence on distributed GPUs, GMI performs a second safety review, ai& checks bilingual wording in Japan, Daytona audits the generated card in an isolated sandbox, and Qoder supports the engineering workflow.
-
+OPEN DOOR TOKYO turns a 20-second walkthrough video from a small Tokyo venue into a bilingual, evidence-linked Access Card. It separates AI observations, staff measurements, and unknowns; lets staff correct the bilingual analysis; blocks unsupported claims such as “wheelchair accessible”; and publishes only after explicit human confirmation. The published card can be shared by QR, pasted into a Google listing, embedded on a venue site, or sent to a consumer map through a signed, idempotent webhook. Runtime traces distinguish live execution, verified samples, fallbacks, and unconfigured integrations.

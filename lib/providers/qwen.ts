@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { getDemoAnalysisCard } from "../fixtures";
 import { reconcile, reserve } from "../guard";
+import { auditClaim } from "../safety/deterministic";
 import type { AccessCard, AnalyzeRequest, ProviderResult } from "../types";
 import {
   type ChatContentPart,
@@ -15,25 +16,108 @@ import {
   reserveFailureCode
 } from "./shared";
 
+const ACCESS_FIELDS = [
+  "entrance.step_presence",
+  "entrance.step_height_cm",
+  "entrance.door_width_cm",
+  "entrance.door_type",
+  "entrance.portable_ramp",
+  "entrance.ramp_assistance",
+  "path_to_seat.table_count",
+  "path_to_seat.chairs_movable",
+  "path_to_seat.narrowest_passage_cm",
+  "communication.writing_support",
+  "communication.english_menu",
+  "restroom.interior_equipment",
+  "path_to_seat.turning_space"
+] as const;
+
+const STAFF_ONLY_FIELDS = new Set<string>([
+  "entrance.step_height_cm",
+  "entrance.door_width_cm",
+  "entrance.ramp_assistance",
+  "path_to_seat.narrowest_passage_cm",
+  "communication.writing_support",
+  "path_to_seat.turning_space"
+]);
+
 const extractionSchema = z.object({
   observations: z.array(
     z.object({
-      field: z.string(),
-      description_ja: z.string(),
-      description_en: z.string(),
+      field: z.enum(ACCESS_FIELDS),
+      description_ja: z.string().min(1).max(240),
+      description_en: z.string().min(1).max(240),
       status: z.enum(["ai_observed", "unknown"]),
       confidence: z.number().min(0).max(1),
       frame_id: z.string().nullable()
-    })
-  ).min(1),
-  unknowns: z.array(z.string()),
-  proposed_claims: z.array(z.string())
+    }).strict()
+  ).max(ACCESS_FIELDS.length),
+  unknowns: z.array(z.enum(ACCESS_FIELDS)).max(ACCESS_FIELDS.length),
+  proposed_claims: z.array(z.string().max(240)).max(ACCESS_FIELDS.length)
+}).strict().superRefine((value, context) => {
+  if (value.observations.length === 0 && value.unknowns.length === 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "empty extraction" });
+  }
+  for (const observation of value.observations) {
+    if (
+      observation.status === "unknown" &&
+      (observation.frame_id !== null || observation.confidence !== 0)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "unknown observation cannot cite evidence"
+      });
+    }
+  }
+  const observationFields = value.observations.map(({ field }) => field);
+  if (new Set(observationFields).size !== observationFields.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "duplicate field" });
+  }
+  const unknowns = new Set(value.unknowns);
+  if (observationFields.some((field) => unknowns.has(field))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "field cannot be observed and unknown"
+    });
+  }
 });
 
 const DEFAULT_QWEN_BASE_URL =
   "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
 const DEFAULT_QWEN_MODEL = "qwen3.6-flash";
 const DEFAULT_QWEN_REGION = "intl";
+const QWEN_INPUT_USD_PER_MILLION_TOKENS = 0.25;
+const QWEN_OUTPUT_USD_PER_MILLION_TOKENS = 1.5;
+
+function reconciledQwenCost(input: {
+  model: string;
+  promptTokens: number | undefined;
+  completionTokens: number | undefined;
+  totalTokens: number | undefined;
+  reservedMaxCostUsd: number;
+}): number | null {
+  if (input.model !== DEFAULT_QWEN_MODEL) return null;
+  const { promptTokens, completionTokens, totalTokens } = input;
+  if (
+    !Number.isSafeInteger(promptTokens) ||
+    !Number.isSafeInteger(completionTokens) ||
+    !Number.isSafeInteger(totalTokens) ||
+    promptTokens! < 0 ||
+    completionTokens! < 0 ||
+    totalTokens! <= 0 ||
+    totalTokens! > 256_000 ||
+    promptTokens! + completionTokens! !== totalTokens
+  ) return null;
+  const cost =
+    (promptTokens! * QWEN_INPUT_USD_PER_MILLION_TOKENS +
+      completionTokens! * QWEN_OUTPUT_USD_PER_MILLION_TOKENS) /
+    1_000_000;
+  return Number.isFinite(cost) &&
+    cost >= 0 &&
+    cost <= input.reservedMaxCostUsd
+    ? cost
+    : null;
+}
 
 function requestFrames(request: AnalyzeRequest): AccessCard["frames"] {
   return request.frames.flatMap((frame, index) => {
@@ -141,39 +225,28 @@ export async function analyzeWithQwen(
   }
 
   let reservationId: string | undefined;
+  let reservedMaxCostUsd: number | null = null;
+  let actualCostUsd: number | null = null;
   try {
     if (request.frames.length > 4) throw new ProviderCallError("payload_too_large");
-    const payloadBytes = request.frames.reduce((sum, frame) => {
-      const value = frame.dataUrl ?? frame.fixtureUrl ?? "";
-      return sum + new TextEncoder().encode(value).byteLength;
-    }, 0);
-    const payloadCap = Number(process.env.QWEN_MAX_PAYLOAD_BYTES ?? 8_000_000);
-    if (!Number.isSafeInteger(payloadCap) || payloadBytes > payloadCap) {
-      throw new ProviderCallError("payload_too_large");
+    if (requestFrames(request).length === 0) {
+      throw new ProviderCallError("schema_invalid");
     }
-    const maxCostUsd = configuredMaxCost(
-      process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD
-    );
-    if (maxCostUsd === null) throw new ProviderCallError("budget_unknown");
-    const reserved = await reserve({
-      surface: "qwen.chat",
-      maxCostUsd,
-      idempotencyKey: `qwen-${request.cardId}`
-    });
-    if (!reserved.ok) throw new ProviderCallError(reserveFailureCode(reserved.code));
-    reservationId = reserved.reservationId;
     const content: ChatContentPart[] = [
       {
         type: "text",
         text: JSON.stringify({
-          venue: request.brief,
-          transcript: request.transcript ?? "",
+          venue: {
+            name: request.brief.name,
+            category: request.brief.category
+          },
+          transcript: (request.transcript ?? "").slice(0, 4_000),
           frame_manifest: request.frames.map((frame) => ({
             frame_id: frame.frameId,
             time_seconds: frame.tSec
           })),
-          instruction:
-            "Match each observation to a frame_id. Images follow in manifest order."
+          allowed_fields: ACCESS_FIELDS,
+          staff_only_fields: Array.from(STAFF_ONLY_FIELDS)
         })
       },
       ...request.frames.flatMap<ChatContentPart>((frame) => {
@@ -188,11 +261,34 @@ export async function analyzeWithQwen(
         ];
       })
     ];
+    const payloadCap = Number(process.env.QWEN_MAX_PAYLOAD_BYTES ?? 8_000_000);
+    const payloadBytes = new TextEncoder().encode(
+      JSON.stringify(content)
+    ).byteLength;
+    if (
+      !Number.isSafeInteger(payloadCap) ||
+      payloadCap < 1 ||
+      payloadBytes > payloadCap
+    ) throw new ProviderCallError("payload_too_large");
+
+    const maxCostUsd = configuredMaxCost(
+      process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD
+    );
+    if (maxCostUsd === null) throw new ProviderCallError("budget_unknown");
+    const reserved = await reserve({
+      surface: "qwen.chat",
+      maxCostUsd,
+      idempotencyKey: `qwen-${request.cardId}`
+    });
+    if (!reserved.ok) throw new ProviderCallError(reserveFailureCode(reserved.code));
+    reservationId = reserved.reservationId;
+    reservedMaxCostUsd = maxCostUsd;
     const response = await openAICompatibleChat({
       baseUrl,
       apiKey,
       model,
       maxTokens: 768,
+      enableThinking: false,
       extraHeaders: workspaceId
         ? { "X-DashScope-WorkSpace": workspaceId }
         : undefined,
@@ -201,7 +297,7 @@ export async function analyzeWithQwen(
         {
           role: "system",
           content:
-            "You extract only visible facts. Never infer measurements, certification, or universal usability. Return strict JSON with observations, unknowns, and proposed_claims."
+            'Return JSON only: {"observations":[{"field":"allowed field","description_ja":"visible fact","description_en":"visible fact","status":"ai_observed","confidence":0.0,"frame_id":"exact frame id"}],"unknowns":["allowed field"],"proposed_claims":[]}. Use only allowed fields and exact frame ids. Report only directly visible facts. Never infer measurements, assistance, communication service, turning suitability, certification, or universal usability. Put staff-only and unseen fields in unknowns. Keep descriptions concrete and short.'
         },
         {
           role: "user",
@@ -209,11 +305,15 @@ export async function analyzeWithQwen(
         }
       ]
     });
-    if (
-      response.model !== model ||
-      !response.usage?.totalTokens ||
-      response.usage.totalTokens <= 0
-    ) throw new ProviderCallError("semantic_invalid");
+    if (response.model !== model) throw new ProviderCallError("semantic_invalid");
+    actualCostUsd = reconciledQwenCost({
+      model,
+      promptTokens: response.usage?.promptTokens,
+      completionTokens: response.usage?.completionTokens,
+      totalTokens: response.usage?.totalTokens,
+      reservedMaxCostUsd
+    });
+    if (actualCostUsd === null) throw new ProviderCallError("semantic_invalid");
     const extraction = extractionSchema.parse(safeJson(response.content));
     const liveCard = unknownCardForRequest(request);
     let appliedObservations = 0;
@@ -222,6 +322,14 @@ export async function analyzeWithQwen(
         (candidate) => candidate.field === observation.field
       );
       if (!item) continue;
+      if (
+        observation.status === "ai_observed" &&
+        STAFF_ONLY_FIELDS.has(observation.field)
+      ) throw new ProviderCallError("semantic_invalid");
+      if (
+        auditClaim(observation.description_ja) ||
+        auditClaim(observation.description_en)
+      ) throw new ProviderCallError("semantic_invalid");
       if (
         observation.status === "ai_observed" &&
         (!observation.frame_id ||
@@ -307,6 +415,6 @@ export async function analyzeWithQwen(
       )
     };
   } finally {
-    if (reservationId) await reconcile({ reservationId, actualCostUsd: null });
+    if (reservationId) await reconcile({ reservationId, actualCostUsd });
   }
 }

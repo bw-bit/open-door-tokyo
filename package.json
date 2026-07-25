@@ -13,6 +13,7 @@
     "preflight:readonly": "scripts/run-readonly-preflights.sh",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "demo:live-video": "node scripts/record-live-video-demo.mjs",
     "verify": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

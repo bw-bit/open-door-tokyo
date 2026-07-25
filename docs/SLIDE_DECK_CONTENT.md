@@ -43,9 +43,12 @@ so each visitor can decide for themselves.
 2. Structure observations, evidence frames, and unknowns.
 3. Block unsupported claims.
 4. Ask staff to measure or confirm what video cannot prove.
-5. Review Japanese/English wording and pre-publication checks.
-6. Publish only after explicit human confirmation.
-7. Open the bilingual card from a QR code.
+5. Let staff manually correct the bilingual AI description or return it to
+   `unknown`.
+6. Review Japanese/English wording and pre-publication checks.
+7. Publish only after explicit human confirmation.
+8. Open the bilingual card from a QR code, copy Google listing text, or embed
+   it in a venue site.
 
 Execution is always labeled as one of:
 `LIVE` / `VERIFIED SAMPLE` / `FALLBACK` / `NOT CONFIGURED`.
@@ -68,7 +71,8 @@ publication, and the public mobile card—has been browser-tested.
 
 **We do not certify. We clarify.**
 
-- Every AI observation links back to a frame and timestamp.
+- Every AI observation links back to a frame and timestamp; manual corrections
+  keep that provenance and add a staff source.
 - Measurements are staff facts, not values inferred from pixels.
 - Missing evidence remains visibly `unknown`.
 - Deterministic rules block unsupported universal claims before any optional
@@ -130,19 +134,19 @@ ongoing verification rather than a one-time accessibility badge.
 
 | Integration | Distinct code-level role | Verified current evidence |
 | --- | --- | --- |
-| Qwen / Model Studio | Up to four frames → bounded structured observations and unknowns; official intl `qwen3.6-flash` defaults, schema, model, usage, and evidence mapping validated | Read-only `/models` authentication is available with the approved tuple; billable inference remains guard-gated |
+| Qwen / Model Studio | Up to four frames → bounded structured observations and unknowns; official intl `qwen3.6-flash` defaults, schema, model, usage, and evidence mapping validated | Production configured; read-only `/models` authenticated and model available; first billable inference remains unused |
 | GMI Cloud | Independent claim-safety verdict with bilingual concrete rewrites | Authenticated read-only model-list check, HTTP 200 |
 | ai& | Japanese/English wording safety review without adding facts | Authenticated read-only model-list check, HTTP 200 |
 | Daytona | One ephemeral pre-publish sandbox; 10-minute TTL, 30-second run, deletion in `finally` | Authenticated read-only current-key check, HTTP 200 |
 | Nosana | Existing job status via `jobs.get()`; paid submission isolated behind quote, confirmation, idempotency, and reservation | Authenticated read-only credit-shape check; no job submitted |
 | Qoder | Expert Panel / Repo Wiki development workflow | Authenticated read-only agent-list check, HTTP 200; developer tooling, not a runtime trace |
 
-The recorded preflight authenticated five read-only surfaces sequentially:
-GMI, ai&, Daytona, Nosana, and Qoder. Qwen now has an approved read-only
-`/models` preflight, but no new external call is claimed here.
+The recorded preflight authenticated all six sponsor surfaces. Qwen completed
+one read-only `/models` request and confirmed that `qwen3.6-flash` is available;
+no generation was performed.
 
-**Billable inference, GPU execution, sandbox execution, and all five gated live
-provider contract tests remain NOT RUN.**
+**Billable Qwen inference, GPU execution, sandbox execution, and all five gated
+live provider contract tests remain NOT RUN.**
 
 ### Suggested production screenshot
 
@@ -176,6 +180,8 @@ Optional ai& wording review → optional Daytona isolated audit
 10-minute signed approval → explicit publish action
         ↓
 Private card JSON storage → public bilingual Access Card + QR
+        ↓
+Optional signed, idempotent consumer-map listing webhook
 
 Nosana read-only existing-job proof is separate.
 Paid Nosana submission is an isolated admin-only path.
@@ -214,8 +220,9 @@ separately named and guarded.
 
 - Production deployment: `READY`
 - TypeScript and production build: passed
-- Deterministic/unit suite: **74 tests passed**
-- Production browser suite: **8/8 passed**, desktop and mobile
+- Deterministic/unit suite: **94 tests passed**
+- Local browser suite: **12 tests passed** across desktop and mobile
+- Latest production sample flow: **2/2 passed**, desktop and mobile
 - Full production sample flow verified:
   capture → review → signed human approval → publish → public bilingual card
 - Published-card browser console: no errors
@@ -224,8 +231,9 @@ separately named and guarded.
 - Gated provider tests safely skipped with the live flag unset
 
 Current limitation:
-all production paid surfaces remain fail-closed because cap, price, maximum
-cost, and hard-limit metadata are not yet fully configured.
+Qwen is configured and guard-ready in production, but no billable inference has
+been consumed. The other paid surfaces remain fail-closed until their cap,
+price, maximum cost, and hard-limit metadata are configured.
 
 ### Suggested production screenshots
 

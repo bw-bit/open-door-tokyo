@@ -35,10 +35,12 @@ function formatTime(seconds: number) {
 
 export function PublicCard({
   card,
-  lang
+  lang,
+  embed = false
 }: {
   card: AccessCard;
   lang: Lang;
+  embed?: boolean;
 }) {
   const sections: EvidenceSection[] = [
     "entrance",
@@ -51,8 +53,8 @@ export function PublicCard({
   const heroFrame = card.frames[0];
 
   return (
-    <main className="public-card">
-      <header className="public-header">
+    <main className={`public-card ${embed ? "is-embedded" : ""}`}>
+      {!embed && <header className="public-header">
         <Link href="/capture" className="public-brand">
           <span className="brand-mark">O</span>
           <strong>OPEN DOOR TOKYO</strong>
@@ -65,7 +67,7 @@ export function PublicCard({
             EN
           </Link>
         </nav>
-      </header>
+      </header>}
 
       <section className="venue-hero">
         <div className="venue-copy">
@@ -187,7 +189,7 @@ export function PublicCard({
         </ul>
       </section>
 
-      <footer className="public-footer">
+      {!embed && <footer className="public-footer">
         <div>
           <strong>OPEN DOOR TOKYO</strong>
           <span>We do not certify. We clarify.</span>
@@ -197,7 +199,7 @@ export function PublicCard({
             ? `最終確認 ${card.lastVerifiedAt ?? "2026-07-25"} · 情報は来店前に店舗へ再確認してください。`
             : `Last verified ${card.lastVerifiedAt ?? "2026-07-25"} · Reconfirm details with the venue before visiting.`}
         </p>
-      </footer>
+      </footer>}
     </main>
   );
 }

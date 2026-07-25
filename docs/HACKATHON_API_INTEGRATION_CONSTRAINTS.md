@@ -37,9 +37,10 @@ Do not merge product surfaces or credentials:
 - GMI Cloud: OpenAI-compatible LLM inference at
   `https://api.gmi-serving.com/v1`. Do not claim an official Google ADK
   adapter.
-- Alibaba Cloud Model Studio / Qwen: preserve the selected
-  region + workspace + API key + compatible-mode base URL + model tuple.
-  Use `DASHSCOPE_API_KEY` as the canonical key name.
+- Alibaba Cloud Model Studio / Qwen: preserve the selected region + API key +
+  compatible-mode base URL + model tuple. Send a workspace header only when
+  workspace routing is explicitly configured. Use `DASHSCOPE_API_KEY` as the
+  canonical key name.
 - Nosana: official Nosana Kit / API for GPU jobs, markets, and deployment.
   API base `https://dashboard.k8s.prd.nos.ci/api`.
 - Qoder: Agent SDK, Cloud Agents, and Teams administration are distinct

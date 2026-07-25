@@ -8,14 +8,15 @@
 
 ## デモで起きること
 
-1. 20秒の店舗ツアー動画を入力
-2. Qwen が動画フレームから観察事実と未確認事項を構造化
-3. Nosana がGPU証拠フレーム索引ジョブを実行・追跡
-4. GMI Cloud と決定論ルールが「車椅子で利用可能」という根拠不足の断定を停止
-5. 店舗スタッフが入口幅などを測定・確認
-6. ai& が日英表現を確認
-7. Daytona が公開カードを隔離サンドボックスで検査
-8. 人が明示的に公開し、QRコードから日英 Access Card を表示
+1. スマートフォンで撮影した MP4 / MOV の店舗ツアー動画を入力
+2. 最大4枚の代表フレームを端末内で抽出し、Qwen 3.6 Flash VL が観察事実と未確認事項を構造化
+3. 接続時は Nosana がGPU証拠フレーム索引ジョブを実行・追跡
+4. 決定論ルールが「車椅子で利用可能」という根拠不足の断定を停止し、接続時は GMI Cloud が再監査
+5. 店舗スタッフがAIの記述を手動修正し、入口幅などを測定・確認
+6. 接続時は ai& が日英表現を確認
+7. 接続時は Daytona が公開カードを隔離サンドボックスで検査
+8. 人が明示的に公開し、QR、公開URL、Google掲載文、iframe埋め込みを生成
+9. 接続時は署名付きWebhookで利用者向けマップへ冪等に自動掲載
 
 各サービスは `LIVE`、`VERIFIED SAMPLE`、`FALLBACK`、`NOT CONFIGURED`
 のいずれかを実行履歴に表示します。サンプル、ライブ失敗、未設定を混同しません。
@@ -52,13 +53,17 @@ npm audit --omit=dev
 検証済み結果:
 
 - TypeScript: pass
-- 安全ルール・状態遷移・プロバイダー表示: 74 tests pass
-- ブラウザ一連操作: desktop / mobile、8 tests pass
+- 安全ルール・状態遷移・プロバイダー表示: 94 tests pass
+- ブラウザ一連操作: desktop / mobile、12 tests pass
+  （モバイル専用2ケースはdesktop projectで意図的にskip）
 - Next.js production build: pass
 - production dependencies: 0 vulnerabilities
 - 読取接続: ai& / Daytona / GMI / Nosana / Qoder は認証成功
-- Qwen読取接続: 公式intl既定tupleでread-only `/models`認証を実行可能
-  （推論はguard readyになるまで未実行）
+- Qwen読取接続: 公式intl既定tupleでread-only `/models`認証に成功し、
+  `qwen3.6-flash`の利用可能性を確認
+- Qwen生成境界: 本番へ設定済み。10セントのアプリ割当、1リクエスト
+  最大1セント、同時実行1、再試行なしの永続クレジットガードで保護
+  （provider側のhard limitは利用不可のため、アプリ側ガードの範囲）
 
 ## データ安全性
 
@@ -70,6 +75,9 @@ npm audit --omit=dev
   automatic retryは無効です。
 - 包括的なアクセシビリティ認定、WCAG適合、法令適合を生成しません。
 - 必須事実の店舗確認、明示的な同意、10分有効のサーバー署名付き承認が揃うまで公開APIは拒否します。
+- 利用者向けマップ連携は、共有秘密によるHMAC署名、固定イベント名、
+  カードID由来の冪等キーを付けた1回だけのWebhookです。接続先がなければ
+  外部送信せず、公開URL・Google掲載文・埋め込みHTMLだけを表示します。
 - Nosanaの接続確認は既存jobのread-only `jobs.get()`だけです。有料GPU
   ジョブ投稿は管理秘密、既知quote、残存cap、provider hard limit、
   明示確認、冪等キー、永続予約が揃う専用APIに隔離し、通常デモでは呼びません。
@@ -82,6 +90,7 @@ npm audit --omit=dev
 - `lib/safety/deterministic.ts`: 禁止断定の決定論ブロック
 - `lib/providers/`: 5社のサーバー側アダプター
 - `app/api/publish/route.ts`: 人の明示確認を必須にする公開ゲート
+- `lib/listing-webhook.ts`: 利用者向けマップへの署名付き自動掲載
 - `fixtures/`: 成功済みデモデータ
 - `docs/DEMO_SCRIPT.md`: 3分台本
 - `docs/RUNBOOK.md`: 当日運用

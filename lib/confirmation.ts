@@ -3,6 +3,13 @@ import type {
   StaffConfirmation
 } from "./types";
 
+export interface StaffCorrection {
+  field: string;
+  descriptionJa: string;
+  descriptionEn: string;
+  markUnknown: boolean;
+}
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -53,7 +60,8 @@ function descriptionFor(
 export function applyStaffConfirmations(
   source: AccessCard,
   confirmations: StaffConfirmation[],
-  reviewerName: string
+  reviewerName: string,
+  corrections: StaffCorrection[] = []
 ): AccessCard {
   const card = clone(source);
   const capturedAt = new Date().toISOString();
@@ -79,6 +87,30 @@ export function applyStaffConfirmations(
       staffLabel: {
         ja: `${reviewerName}が確認`,
         en: `Confirmed by ${reviewerName}`
+      },
+      capturedAt
+    });
+  }
+
+  for (const correction of corrections) {
+    const item = card.items.find(
+      (candidate) => candidate.field === correction.field
+    );
+    if (!item) continue;
+    item.description = {
+      ja: correction.descriptionJa,
+      en: correction.descriptionEn
+    };
+    item.value = correction.markUnknown ? null : item.value;
+    item.status = correction.markUnknown ? "unknown" : "staff_stated";
+    item.confirmedByStaff = !correction.markUnknown;
+    item.confidence = correction.markUnknown ? 0 : 1;
+    item.lastVerifiedAt = verifiedDate;
+    item.provenance.push({
+      kind: "staff_input",
+      staffLabel: {
+        ja: `${reviewerName}がAI解析を修正`,
+        en: `AI analysis corrected by ${reviewerName}`
       },
       capturedAt
     });
