@@ -290,6 +290,135 @@ video {
   font-size: 12px;
 }
 
+.shooting-guide {
+  margin-bottom: 22px;
+  padding: 20px;
+  border: 1px solid #bdd5d2;
+  border-left: 4px solid var(--teal);
+  background: #f4faf9;
+}
+
+.shooting-guide-heading {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.shooting-guide-heading h3 {
+  margin: 0 0 5px;
+  color: var(--ink-deep);
+  font-family: "Yu Mincho", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.shooting-guide-heading p {
+  margin: 0;
+  color: #526973;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.shooting-guide-heading > strong {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  color: var(--teal);
+  border: 1px solid #8fbdb8;
+  background: white;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.shooting-guide-steps {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #c9dcda;
+  border-left: 1px solid #c9dcda;
+  list-style: none;
+}
+
+.shooting-guide-steps li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 13px;
+  padding: 12px;
+  border-right: 1px solid #c9dcda;
+  border-bottom: 1px solid #c9dcda;
+  background: white;
+}
+
+.shooting-guide-steps figure {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  align-self: start;
+  aspect-ratio: 16 / 10;
+  background: #dfe9e8;
+}
+
+.shooting-guide-steps img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.shooting-guide-steps figcaption {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 3px 5px;
+  color: white;
+  background: rgba(9, 34, 48, 0.9);
+  font: 700 9px/1 ui-monospace, monospace;
+}
+
+.shooting-guide-steps li > div > span {
+  color: var(--teal);
+  font: 700 9px/1 Georgia, serif;
+}
+
+.shooting-guide-steps h4 {
+  margin: 5px 0 5px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.shooting-guide-steps p {
+  margin: 0;
+  color: #536a74;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.shooting-guide-extra {
+  padding: 12px 13px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  color: #5f4a16;
+  background: #fff8e7;
+  border: 1px solid #ead9a9;
+  border-top: 0;
+}
+
+.shooting-guide-extra strong {
+  color: #8b6810;
+  font-size: 10px;
+}
+
+.shooting-guide-extra p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
 .video-shell {
   overflow: hidden;
   border: 1px solid #cdd7db;
@@ -454,37 +583,15 @@ video {
   font-weight: 700;
 }
 
-.capture-guidance {
-  margin-top: 20px;
-  padding: 22px 24px;
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 8px 24px;
-  border: 1px solid var(--line);
-  background: #fbfcfc;
-}
-
-.capture-guidance > strong {
-  font-family: "Yu Mincho", Georgia, serif;
-  font-size: 15px;
-}
-
-.capture-guidance ol {
-  margin: 0;
-  padding-left: 21px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px 25px;
-  color: #425a65;
-  font-size: 11px;
-}
-
-.capture-guidance p {
-  grid-column: 2;
-  margin: 5px 0 0;
-  color: var(--amber);
+.capture-estimate-note {
+  margin: 16px 0 0;
+  padding: 11px 14px;
+  color: #715b22;
+  background: #fff8e7;
+  border-left: 3px solid var(--amber);
   font-size: 10px;
   font-weight: 700;
+  line-height: 1.7;
 }
 
 .trace-rail {
@@ -1775,16 +1882,30 @@ video {
     width: 100%;
   }
 
-  .capture-guidance {
+  .shooting-guide {
+    padding: 14px;
+  }
+
+  .shooting-guide-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shooting-guide-heading > strong {
+    align-self: flex-start;
+  }
+
+  .shooting-guide-steps {
     grid-template-columns: 1fr;
   }
 
-  .capture-guidance ol {
-    grid-template-columns: 1fr;
+  .shooting-guide-steps li {
+    grid-template-columns: 118px minmax(0, 1fr);
   }
 
-  .capture-guidance p {
-    grid-column: 1;
+  .shooting-guide-extra {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .review-title {

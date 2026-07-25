@@ -10,6 +10,16 @@ test("sample video becomes a reviewed and published evidence card", async ({
   await expect(
     page.getByText(/動画から幅のある推定範囲を出します/)
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "この順番で撮ればOK" })
+  ).toBeVisible();
+  await expect(page.getByText("入口の全体", { exact: true })).toBeVisible();
+  await expect(page.getByText("段差・敷居", { exact: true })).toBeVisible();
+  await expect(page.getByText("ドア・入口幅", { exact: true })).toBeVisible();
+  await expect(page.getByText("通路・利用する席", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "自分の動画を選ぶ" })
+  ).toBeVisible();
   await expect(page.getByLabel("住所（日本語）")).toHaveValue(
     "東京都千代田区架空1-2-3"
   );

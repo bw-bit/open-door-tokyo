@@ -30,6 +30,32 @@ const demoCapturedFrames = [
   { src: "/demo/frames/03-door-width.png", tSec: 11 },
   { src: "/demo/frames/04-seating.png", tSec: 16 }
 ];
+const shootingGuideSteps = [
+  {
+    time: "0〜4秒",
+    title: "入口の全体",
+    description: "歩道から入口、看板、入口前のスペースまで入れる",
+    image: "/demo/frames/01-entrance.png"
+  },
+  {
+    time: "4〜8秒",
+    title: "段差・敷居",
+    description: "足元へ近づき、段差の正面で2秒ほど止まる",
+    image: "/demo/frames/02-step-measurement.png"
+  },
+  {
+    time: "8〜13秒",
+    title: "ドア・入口幅",
+    description: "取っ手を映し、ドアを実際に開けて通れる幅を撮る",
+    image: "/demo/frames/03-door-width.png"
+  },
+  {
+    time: "13〜20秒",
+    title: "通路・利用する席",
+    description: "入口から席まで、障害物や曲がり角も続けて撮る",
+    image: "/demo/frames/04-seating.png"
+  }
+] as const;
 
 function formatCaptureTime(seconds: number) {
   const wholeSeconds = Math.max(0, Math.round(seconds));
@@ -421,9 +447,41 @@ export function CaptureClient() {
             <span className="number-label">01</span>
             <div>
               <h2>店舗ツアー動画</h2>
-              <p>入口 → ドア → 通路 → 席を、止まらずゆっくり撮影</p>
+              <p>下の4場面を順番に、止めずにゆっくり撮影してください</p>
             </div>
           </div>
+
+          <section className="shooting-guide" aria-labelledby="shooting-guide-title">
+            <div className="shooting-guide-heading">
+              <div>
+                <h3 id="shooting-guide-title">この順番で撮ればOK</h3>
+                <p>スマートフォンを横向きにして、20秒ほどで入口から席まで進みます。</p>
+              </div>
+              <strong>20秒の撮影例</strong>
+            </div>
+            <ol className="shooting-guide-steps">
+              {shootingGuideSteps.map((step, index) => (
+                <li key={step.title}>
+                  <figure>
+                    <img src={step.image} alt={`${step.title}の撮影例`} />
+                    <figcaption>{step.time}</figcaption>
+                  </figure>
+                  <div>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <h4>{step.title}</h4>
+                    <p>{step.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="shooting-guide-extra">
+              <strong>余裕があれば続けて撮る</strong>
+              <p>
+                トイレの入口・内部・手すり、簡易スロープ、筆談やメニューの案内。
+                映せない設備は「スロープはレジの後ろ」のように声で説明してください。
+              </p>
+            </div>
+          </section>
 
           <div className="video-shell">
             <div className="venue-field">
@@ -552,7 +610,7 @@ export function CaptureClient() {
               onClick={() => inputRef.current?.click()}
               disabled={busy}
             >
-              動画を選び直す
+              {selectedFile ? "動画を選び直す" : "自分の動画を選ぶ"}
             </button>
             <button
               className="button primary"
@@ -581,19 +639,10 @@ export function CaptureClient() {
           )}
         </div>
 
-        <div className="capture-guidance">
-          <strong>撮影ガイド</strong>
-          <ol>
-            <li>入口全体と段差を正面から</li>
-            <li>ドアを開け、最も狭い幅を撮影</li>
-            <li>入口から利用する席まで歩く</li>
-            <li>設備は声に出して説明する</li>
-          </ol>
-          <p>
-            段差や幅は、動画から幅のある推定範囲を出します。「動画から推定」と明記し、
-            店舗の実測値とは区別します。関連箇所が映らない項目だけを「要確認」にします。
-          </p>
-        </div>
+        <p className="capture-estimate-note">
+          段差や幅は、動画から幅のある推定範囲を出します。実測値とは分けて表示し、
+          映っていない項目だけを「要確認」にします。
+        </p>
       </section>
 
       <ProviderTraceRail activeProvider={currentPhase?.provider} />
