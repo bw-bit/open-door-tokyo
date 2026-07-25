@@ -64,6 +64,10 @@ npm audit --omit=dev
 - Qwen生成境界: 本番へ設定済み。10セントのアプリ割当、1リクエスト
   最大1セント、同時実行1、再試行なしの永続クレジットガードで保護
   （provider側のhard limitは利用不可のため、アプリ側ガードの範囲）
+- Qwen実動画proof: iPhone動画から抽出した4フレームを
+  `qwen3.6-flash`で1回だけ解析。`LIVE` / `SCHEMA + SEMANTIC PASS`、
+  5.161秒、再試行0。入口ドアの具体的観察1件だけを採用し、10項目を
+  `unknown`のまま保持。ガードは残り9枠・未精算0を確認
 
 ## データ安全性
 
@@ -98,6 +102,9 @@ npm audit --omit=dev
 - `docs/SPONSOR_INTEGRATIONS.md`: 審査員向けコード索引
 - `docs/OPUS5_IMPLEMENTATION_PLAN.md`: Opus 5が作成した実装計画
 - `docs/OPUS5_FINAL_ACCEPTANCE.md`: Opus 5の最終PASS判定
+- `outputs/submission/open-door-tokyo-deck.pdf`: 提出用8ページPDF
+- `outputs/submission/open-door-tokyo-demo-final.mp4`: 47秒の最終デモ
+  （実Qwen proof + 検証済み公開フロー）
 
 ## 実装構成
 

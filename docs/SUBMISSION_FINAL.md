@@ -59,6 +59,7 @@ https://open-door-tokyo.vercel.app
 - Runtime traces distinguish `LIVE`, `VERIFIED SAMPLE`, `FALLBACK`, and `NOT CONFIGURED`. Sponsor-credit reservations fail closed when cap, price, estimate, or hard-limit state is unknown.
 - Staff can manually correct the bilingual AI description or return a field to `unknown` while retaining the original video provenance.
 - Publication produces a QR, public URL, Google listing copy, iframe embed, and an optional signed, idempotent webhook for automatic consumer-map listing.
+- One guarded production upload of the supplied iPhone video completed as `LIVE` with `qwen3.6-flash`, passed schema and semantic validation, accepted one concrete door observation, and kept ten fields unknown. No retry was made.
 
 ## Required material checklist
 
@@ -77,7 +78,8 @@ https://open-door-tokyo.vercel.app
 
 ### Demo and evidence
 
-- ☑ Demo recording completed and technically reviewed (27.16 seconds)
+- ☑ Final demo recording completed and technically reviewed (47.00 seconds:
+  guarded Qwen LIVE proof followed by the full verified publication flow)
 - ☑ Desktop and mobile screenshots selected
 - ☑ Capture → evidence review → staff confirmation → public card flow rehearsed
 - ☑ Safety-audit moment showing a blocked unsupported claim included

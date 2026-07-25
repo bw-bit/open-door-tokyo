@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "demo:live-video": "node scripts/record-live-video-demo.mjs",
+    "proof:qwen:once": "node scripts/analyze-live-video-once.mjs",
     "verify": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

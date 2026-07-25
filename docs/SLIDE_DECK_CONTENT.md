@@ -134,7 +134,7 @@ ongoing verification rather than a one-time accessibility badge.
 
 | Integration | Distinct code-level role | Verified current evidence |
 | --- | --- | --- |
-| Qwen / Model Studio | Up to four frames → bounded structured observations and unknowns; official intl `qwen3.6-flash` defaults, schema, model, usage, and evidence mapping validated | Production configured; read-only `/models` authenticated and model available; first billable inference remains unused |
+| Qwen / Model Studio | Up to four frames → bounded structured observations and unknowns; official intl `qwen3.6-flash` defaults, schema, model, usage, and evidence mapping validated | One guarded real-video inference: LIVE, schema + semantic pass, 5,161ms, no retry |
 | GMI Cloud | Independent claim-safety verdict with bilingual concrete rewrites | Authenticated read-only model-list check, HTTP 200 |
 | ai& | Japanese/English wording safety review without adding facts | Authenticated read-only model-list check, HTTP 200 |
 | Daytona | One ephemeral pre-publish sandbox; 10-minute TTL, 30-second run, deletion in `finally` | Authenticated read-only current-key check, HTTP 200 |
@@ -145,8 +145,8 @@ The recorded preflight authenticated all six sponsor surfaces. Qwen completed
 one read-only `/models` request and confirmed that `qwen3.6-flash` is available;
 no generation was performed.
 
-**Billable Qwen inference, GPU execution, sandbox execution, and all five gated
-live provider contract tests remain NOT RUN.**
+**One guarded Qwen inference passed. GMI/ai& generation, GPU execution,
+sandbox execution, and the gated multi-provider live suite remain NOT RUN.**
 
 ### Suggested production screenshot
 
@@ -231,9 +231,11 @@ separately named and guarded.
 - Gated provider tests safely skipped with the live flag unset
 
 Current limitation:
-Qwen is configured and guard-ready in production, but no billable inference has
-been consumed. The other paid surfaces remain fail-closed until their cap,
-price, maximum cost, and hard-limit metadata are configured.
+One real iPhone-video Qwen proof passed schema and semantic validation. It
+accepted one concrete door observation, left ten fields unknown, used no retry,
+and left nine guard slots with zero outstanding reservations. The other paid
+surfaces remain fail-closed until their cap, price, maximum cost, and
+hard-limit metadata are configured.
 
 ### Suggested production screenshots
 

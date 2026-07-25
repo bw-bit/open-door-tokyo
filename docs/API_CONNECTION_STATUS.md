@@ -1,6 +1,6 @@
 # Partner API Connection Status
 
-Checked: `2026-07-25T04:25:21Z`
+Checked: `2026-07-25T04:42:28Z`
 
 This report contains no credential values, hashes, prefixes, lengths, response
 bodies from partner APIs, or environment dumps.
@@ -13,7 +13,7 @@ Production deployment: `dpl_3ApEy1HbnkQVfREN7DinbKJy341M` (`READY`)
 
 | Surface | Configured in production | Local read-only authentication | Billable/generation proof |
 | --- | ---: | --- | --- |
-| Qwen / Model Studio | yes | authenticated, HTTP 200 model list; `qwen3.6-flash` available | not run |
+| Qwen / Model Studio | yes | authenticated, HTTP 200 model list; `qwen3.6-flash` available | one guarded real-video inference passed schema + semantic validation |
 | GMI Cloud | no | authenticated, HTTP 200 model list | not run |
 | ai& | no | authenticated, HTTP 200 model list | not run |
 | Daytona | no | authenticated, HTTP 200 current-key lookup | not run |
@@ -27,9 +27,10 @@ model `qwen3.6-flash`; workspace routing is optional. One authenticated
 `GET /models` request completed without generation and confirmed that the model
 is available.
 
-The current response reports Qwen with `capKnown=true`, `priceKnown=true`,
-`hardLimit=unavailable`, ten one-cent reservation slots, and no outstanding
-action. Qwen has a ten-cent app allocation and a one-cent maximum per request.
+After the one guarded proof, the current response reports Qwen with
+`capKnown=true`, `priceKnown=true`, `hardLimit=unavailable`, nine remaining
+one-cent reservation slots, and no outstanding action. Qwen has a ten-cent app
+allocation and a one-cent maximum per request.
 All other paid surfaces remain fail-closed with unknown cap or price state.
 Paid fallback and auto top-up are disabled, and maximum billable concurrency
 is one.
@@ -41,6 +42,9 @@ is one.
 - local browser suite: 12 tests passed across desktop and mobile, with two
   mobile-only cases intentionally skipped in the desktop project;
 - latest production sample flow: 2/2 passed on desktop and mobile;
+- one real iPhone-video Qwen proof: `LIVE`, `qwen3.6-flash`,
+  `SCHEMA + SEMANTIC PASS`, 5,161ms, no retry; one concrete door observation
+  accepted and ten fields retained as unknown;
 - full production sample flow: capture, review, signed human approval, publish,
   and public bilingual card verified;
 - browser console on the published card: no errors;
@@ -52,10 +56,11 @@ is one.
   surfaces authenticated without retry; Qwen used one read-only model-list
   request and no generation.
 
-The billable or generation provider tests remain **NOT RUN**. The local
-read-only results prove authentication and control-plane connectivity only.
-They do not prove model inference, GPU execution, or sandbox execution. The
-non-Qwen surfaces still lack the exact per-surface model/product allocation,
+The gated multi-provider billable test suite remains **NOT RUN**. Separately,
+the app completed exactly one guarded Qwen inference through the production
+upload flow. No GMI generation, Nosana GPU execution, ai& generation, or
+Daytona sandbox execution is claimed. The non-Qwen surfaces still lack the
+exact per-surface model/product allocation,
 confirmed remaining app cap, official current price, conservative maximum
 request cost, and provider hard limit required by the sponsor-credit guard.
 
@@ -87,6 +92,7 @@ and provider-side hard-limit state. Qwen uses the approved intl base URL and
 `qwen3.6-flash` defaults; override them only with an explicitly approved
 compatible tuple.
 
-The gated live suite may run once only after the sponsor-credit guard reports
-ready. Missing or unknown cost data is a deliberate fail-closed result, not a
-connection failure.
+Do not repeat the Qwen proof merely for demonstration; use the saved LIVE
+review and recording. The remaining gated live suite may run only after each
+surface's sponsor-credit guard reports ready. Missing or unknown cost data is a
+deliberate fail-closed result, not a connection failure.

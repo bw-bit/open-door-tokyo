@@ -16,6 +16,8 @@
 
 > 本番の実動画ではQwen 3.6 Flash VLが最大4枚の代表フレームを解析します。今見せている再現可能な経路はVERIFIED SAMPLEです。未実行のNosana、GMI、ai&、DaytonaはNOT CONFIGUREDと正直に表示します。
 
+> 提出前にiPhoneの実動画でも1回だけ実行し、LIVE、SCHEMA + SEMANTIC PASSを確認済みです。デモでは再課金せず、その成功録画を証拠として使います。
+
 ## 0:40–1:15 Evidence Review
 
 入口タブの映像フレーム、時刻、AI観察、未確認を順に指す。
