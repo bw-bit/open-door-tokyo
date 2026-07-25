@@ -5,14 +5,39 @@ test("sample video becomes a reviewed and published evidence card", async ({
 }) => {
   await page.goto("/capture");
   await expect(
-    page.getByRole("heading", { name: /入口から席までを/ })
+    page.getByRole("heading", { name: /お店の入口を撮ると/ })
   ).toBeVisible();
-  await expect(page.getByText("測れない数値をAIが推測することはありません")).toBeVisible();
+  await expect(
+    page.getByText(/映像から幅のある参考値を出すことがあります/)
+  ).toBeVisible();
+  await expect(page.getByLabel("住所（日本語）")).toHaveValue(
+    "東京都千代田区架空1-2-3"
+  );
+  await expect(page.getByLabel("Google マップのURL")).toHaveValue(
+    "https://maps.google.com/?q=35.6809,139.7671"
+  );
+  await expect(
+    page.getByRole("img", { name: "AI分析用の自動キャプチャ 1" })
+  ).toBeVisible();
 
-  await page.getByRole("button", { name: "証拠を抽出する" }).click();
+  await page.getByRole("button", { name: "動画から情報をつくる" }).click();
   await page.waitForURL("**/review/demo-cafe");
-  await expect(page.getByText("VERIFIED SAMPLE")).toHaveCount(2);
-  await expect(page.getByText("FALLBACK")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "公開前に、お店の方が確かめてください。"
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "AIが見た画像を、そのまま根拠として表示"
+    })
+  ).toBeVisible();
+  await expect(page.getByText("AI参考推定").first()).toBeVisible();
+  await expect(
+    page.getByText("映像からの参考推定：約6〜10cm（実測ではありません）")
+  ).toBeVisible();
+  await expect(page.getByText("検証済みサンプル")).toHaveCount(2);
+  await expect(page.getByText("安全フォールバック")).toHaveCount(0);
   await expect(page.getByText("「車椅子で利用可能」")).toBeVisible();
   await expect(page.getByText("根拠のある表現へ書換")).toBeVisible();
 
@@ -28,7 +53,7 @@ test("sample video becomes a reviewed and published evidence card", async ({
     .fill("Staff confirmed: this is a manually opened sliding door");
 
   await page
-    .getByRole("checkbox", { name: /映像・実測値・未確認項目を確認/ })
+    .getByRole("checkbox", { name: /AI観察・参考推定・実測値・未確認項目を確認/ })
     .check();
   await page
     .getByRole("button", { name: "店舗スタッフとして確認する" })
@@ -39,7 +64,7 @@ test("sample video becomes a reviewed and published evidence card", async ({
 
   await page.getByRole("button", { name: "確認して公開する" }).click();
   await expect(
-    page.getByRole("heading", { name: "来店前 Access Card を公開しました" })
+    page.getByRole("heading", { name: "来店前アクセス案内を公開しました" })
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "URLをコピー" })).toBeVisible();
   await expect(
@@ -54,18 +79,28 @@ test("sample video becomes a reviewed and published evidence card", async ({
   expect(href).toBe("/c/demo-cafe");
 
   await page.goto(href!);
-  await expect(page.getByText("これは認定や適合判定ではありません")).toBeVisible();
+  await expect(page.getByText("段差の高さは約8cmです")).toBeVisible();
+  await expect(page.getByText("スタッフ確認済み").first()).toBeVisible();
+  await expect(page.getByText(/これは認定や利用可否の判定ではありません/)).toBeVisible();
   await expect(
     page.getByText("スタッフ確認: 手動で開ける引き戸です")
   ).toBeVisible();
   await expect(page.getByText("まだ確認できていないこと")).toBeVisible();
-  await expect(page.getByText("We do not certify. We clarify.")).toBeVisible();
+  await expect(page.getByText("認定ではなく、判断材料を。")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "行く前に知りたい6項目" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "AIが見た画像を、そのまま根拠として表示"
+    })
+  ).toBeVisible();
 
   await page.goto(`${href!}?embed=1`);
   await expect(
     page.getByText("スタッフ確認: 手動で開ける引き戸です")
   ).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Language" })).toHaveCount(
+  await expect(page.getByRole("navigation", { name: "表示言語" })).toHaveCount(
     0
   );
 });
@@ -162,10 +197,10 @@ test("mobile video selection extracts a bounded real-upload payload", async ({
   await page
     .locator('input[type="file"]')
     .setInputFiles("public/demo/cafe-tour.mp4");
-  await expect(page.getByText("UPLOAD")).toBeVisible();
+  await expect(page.getByText("選択動画")).toBeVisible();
   await expect(page.getByText("cafe-tour.mp4")).toBeVisible();
-  await expect(page.getByText(/最大4フレーム/)).toBeVisible();
-  await page.getByRole("button", { name: "証拠を抽出する" }).click();
+  await expect(page.getByText(/自動キャプチャ4枚/)).toBeVisible();
+  await page.getByRole("button", { name: "動画から情報をつくる" }).click();
   await expect(page.getByRole("status")).toBeVisible();
   await page.waitForURL(/\/review\/venue-/, { timeout: 30_000 });
 
@@ -198,7 +233,7 @@ test("mobile upload gives a clear error for an unsupported file", async ({
   await expect(page.locator(".error-message")).toHaveText(
     "MP4またはMOV形式の動画を選んでください。"
   );
-  await expect(page.getByText("SAMPLE")).toBeVisible();
+  await expect(page.getByText("サンプル", { exact: true })).toBeVisible();
 });
 
 test("real upload API rejects fixture frame URLs", async ({ request }) => {

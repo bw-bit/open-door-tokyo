@@ -22,6 +22,17 @@ const phases: Array<{ provider: ProviderId; text: string }> = [
 
 const VIDEO_LOAD_TIMEOUT_MS = 15_000;
 const FRAME_JPEG_QUALITIES = [0.72, 0.58, 0.44];
+const demoCapturedFrames = [
+  { src: "/demo/frames/01-entrance.png", tSec: 4 },
+  { src: "/demo/frames/02-step-measurement.png", tSec: 7 },
+  { src: "/demo/frames/03-door-width.png", tSec: 11 },
+  { src: "/demo/frames/04-seating.png", tSec: 16 }
+];
+
+function formatCaptureTime(seconds: number) {
+  const wholeSeconds = Math.max(0, Math.round(seconds));
+  return `00:${String(wholeSeconds).padStart(2, "0")}`;
+}
 
 function waitForVideoEvent(
   video: HTMLVideoElement,
@@ -182,8 +193,16 @@ export function CaptureClient() {
   const previewUrlRef = useRef<string | null>(null);
   const [fileName, setFileName] = useState("cafe-tour.mp4");
   const [venueName, setVenueName] = useState("CAFÉ OPEN DOOR");
+  const [addressJa, setAddressJa] = useState("東京都千代田区架空1-2-3");
+  const [addressEn, setAddressEn] = useState("1-2-3 Kakuu, Chiyoda-ku, Tokyo");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState(
+    "https://maps.google.com/?q=35.6809,139.7671"
+  );
+  const [latitude, setLatitude] = useState("35.6809");
+  const [longitude, setLongitude] = useState("139.7671");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoSrc, setVideoSrc] = useState("/demo/cafe-tour.mp4");
+  const [capturedFrames, setCapturedFrames] = useState(demoCapturedFrames);
   const [phase, setPhase] = useState(-1);
   const [progressText, setProgressText] = useState("");
   const [error, setError] = useState("");
@@ -202,6 +221,39 @@ export function CaptureClient() {
       setError("店舗名を入力してください");
       return;
     }
+    const locationValues = [
+      addressJa.trim(),
+      addressEn.trim(),
+      googleMapsUrl.trim(),
+      latitude.trim(),
+      longitude.trim()
+    ];
+    const hasAnyLocation = locationValues.some(Boolean);
+    const hasCompleteLocation = locationValues.every(Boolean);
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (
+      hasAnyLocation &&
+      (!hasCompleteLocation ||
+        !Number.isFinite(lat) ||
+        lat < 35.4 ||
+        lat > 35.95 ||
+        !Number.isFinite(lng) ||
+        lng < 138.9 ||
+        lng > 140.1)
+    ) {
+      setError(
+        "地図掲載には住所、Google Maps URL、東京都内の緯度・経度をすべて入力してください"
+      );
+      return;
+    }
+    const listingLocation = hasCompleteLocation
+      ? {
+          address: { ja: addressJa.trim(), en: addressEn.trim() },
+          googleMapsUrl: googleMapsUrl.trim(),
+          location: { lat, lng }
+        }
+      : {};
     setProgressText(
       selectedFile ? "動画を読み込んでいます…" : "サンプルデータを準備しています…"
     );
@@ -221,6 +273,15 @@ export function CaptureClient() {
             { frameId: "frame-03", tSec: 11, fixtureUrl: "/demo/frames/03-door-width.png" },
             { frameId: "frame-04", tSec: 16, fixtureUrl: "/demo/frames/04-seating.png" }
           ];
+      setCapturedFrames(
+        frames.map((frame) => ({
+          src:
+            ("dataUrl" in frame ? frame.dataUrl : undefined) ??
+            ("fixtureUrl" in frame ? frame.fixtureUrl : undefined) ??
+            "",
+          tSec: frame.tSec
+        }))
+      );
       setPhase(0);
       setProgressText("安全に解析リクエストを送信しています…");
       phaseTimer = window.setInterval(
@@ -235,7 +296,8 @@ export function CaptureClient() {
           brief: {
             name: venueName.trim(),
             category: "cafe",
-            languages: ["ja", "en"]
+            languages: ["ja", "en"],
+            ...listingLocation
           },
           frames,
           transcript: selectedFile
@@ -274,6 +336,12 @@ export function CaptureClient() {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
       setVideoSrc("/demo/cafe-tour.mp4");
+      setAddressJa("東京都千代田区架空1-2-3");
+      setAddressEn("1-2-3 Kakuu, Chiyoda-ku, Tokyo");
+      setGoogleMapsUrl("https://maps.google.com/?q=35.6809,139.7671");
+      setLatitude("35.6809");
+      setLongitude("139.7671");
+      setCapturedFrames(demoCapturedFrames);
       return;
     }
     const validation = validateSelectedVideo(file);
@@ -291,6 +359,12 @@ export function CaptureClient() {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     const previewUrl = URL.createObjectURL(file);
     previewUrlRef.current = previewUrl;
+    setAddressJa("");
+    setAddressEn("");
+    setGoogleMapsUrl("");
+    setLatitude("");
+    setLongitude("");
+    setCapturedFrames([]);
     setSelectedFile(file);
     setFileName(file.name);
     setVideoSrc(previewUrl);
@@ -301,15 +375,15 @@ export function CaptureClient() {
   return (
     <div className="capture-grid">
       <section className="capture-main">
-        <div className="eyebrow">VIDEO-TO-EVIDENCE AGENT</div>
+        <div className="eyebrow">動画から来店前案内をつくる</div>
         <h1>
-          入口から席までを、
+          お店の入口を撮ると、
           <br />
-          <em>行く前に分かる情報</em>へ。
+          <em>行く前に分かる案内</em>になります。
         </h1>
         <p className="lede">
-          店舗を20秒撮影すると、AIが段差・入口幅・通路・コミュニケーション方法を整理。
-          根拠がない項目は「未確認」のまま、証拠付きの日英カードにします。
+          20秒の動画から、段差・入口の幅・通路・筆談などをAIが整理します。
+          分からない所は「未確認」のまま残し、電話せずに見られる案内にします。
         </p>
 
         <div className="capture-card">
@@ -332,6 +406,62 @@ export function CaptureClient() {
               />
               <span>東京 · カフェ / 飲食店</span>
             </div>
+            <details className="listing-location-fields">
+              <summary>地図にも自動掲載する（任意）</summary>
+              <p>
+                利用者向けマップへ掲載する場合だけ、住所と位置情報を入力します。
+              </p>
+              <div className="venue-field">
+                <label htmlFor="venue-address-ja">住所（日本語）</label>
+                <input
+                  id="venue-address-ja"
+                  value={addressJa}
+                  onChange={(event) => setAddressJa(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="venue-field">
+                <label htmlFor="venue-address-en">住所（英語・任意）</label>
+                <input
+                  id="venue-address-en"
+                  value={addressEn}
+                  onChange={(event) => setAddressEn(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="venue-field">
+                <label htmlFor="venue-maps-url">Google マップのURL</label>
+                <input
+                  id="venue-maps-url"
+                  type="url"
+                  value={googleMapsUrl}
+                  onChange={(event) => setGoogleMapsUrl(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="venue-field">
+                <label htmlFor="venue-latitude">緯度（東京都内）</label>
+                <input
+                  id="venue-latitude"
+                  type="number"
+                  step="any"
+                  value={latitude}
+                  onChange={(event) => setLatitude(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="venue-field">
+                <label htmlFor="venue-longitude">経度（東京都内）</label>
+                <input
+                  id="venue-longitude"
+                  type="number"
+                  step="any"
+                  value={longitude}
+                  onChange={(event) => setLongitude(event.target.value)}
+                  disabled={busy}
+                />
+              </div>
+            </details>
             <video
               src={videoSrc}
               poster={selectedFile ? undefined : "/demo/frames/01-entrance.png"}
@@ -345,14 +475,37 @@ export function CaptureClient() {
               }
             />
             <div className="video-meta">
-              <span className="sample-tag">{selectedFile ? "UPLOAD" : "SAMPLE"}</span>
+              <span className="sample-tag">{selectedFile ? "選択動画" : "サンプル"}</span>
               <span>{fileName}</span>
               <span>
                 {selectedFile
-                  ? `${(selectedFile.size / 1_000_000).toFixed(1)}MB · 最大4フレーム`
-                  : "00:20 · 4 evidence frames"}
+                  ? `${(selectedFile.size / 1_000_000).toFixed(1)}MB · 自動キャプチャ4枚`
+                  : "00:20 · 自動キャプチャ4枚"}
               </span>
             </div>
+            <section className="analysis-captures" aria-label="分析に使う自動キャプチャ画像">
+              <div className="analysis-captures-heading">
+                <strong>AIが分析する画像</strong>
+                <span>
+                  {capturedFrames.length > 0
+                    ? `${capturedFrames.length}枚を時刻付きで自動抽出`
+                    : "解析開始後に4枚を自動抽出"}
+                </span>
+              </div>
+              {capturedFrames.length > 0 && (
+                <div className="analysis-captures-grid">
+                  {capturedFrames.map((frame, index) => (
+                    <figure key={`${frame.tSec}-${index}`}>
+                      <img
+                        src={frame.src}
+                        alt={`AI分析用の自動キャプチャ ${index + 1}`}
+                      />
+                      <figcaption>{formatCaptureTime(frame.tSec)}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
 
           <div className="upload-row">
@@ -378,7 +531,7 @@ export function CaptureClient() {
               disabled={busy}
               aria-busy={busy}
             >
-              {busy ? "処理中…" : "証拠を抽出する"}
+              {busy ? "処理中…" : "動画から情報をつくる"}
               <span aria-hidden="true">→</span>
             </button>
           </div>
@@ -406,7 +559,10 @@ export function CaptureClient() {
             <li>入口から利用する席まで歩く</li>
             <li>設備は声に出して説明する</li>
           </ol>
-          <p>測れない数値をAIが推測することはありません。</p>
+          <p>
+            段差や幅は、映像から幅のある参考値を出すことがあります。実測ではないと
+            明記し、判断できない項目は「未確認」のまま残します。
+          </p>
         </div>
       </section>
 

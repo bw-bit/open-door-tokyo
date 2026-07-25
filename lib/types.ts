@@ -56,6 +56,9 @@ export interface VenueBrief {
   name: string;
   category: "cafe" | "restaurant" | "other";
   sourceUrl?: string;
+  address?: LocalizedText;
+  googleMapsUrl?: string;
+  location?: { lat: number; lng: number };
   languages: ("ja" | "en")[];
   createdAt: string;
 }

@@ -5,6 +5,12 @@
     "name": "CAFÉ OPEN DOOR",
     "category": "cafe",
     "sourceUrl": "https://example.com/cafe",
+    "address": {
+      "ja": "東京都千代田区架空1-2-3",
+      "en": "1-2-3 Kakuu, Chiyoda-ku, Tokyo"
+    },
+    "googleMapsUrl": "https://maps.google.com/?q=35.6809,139.7671",
+    "location": { "lat": 35.6809, "lng": 139.7671 },
     "languages": ["ja", "en"],
     "createdAt": "2026-07-25T01:00:00.000Z"
   },

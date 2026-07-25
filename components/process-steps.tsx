@@ -1,7 +1,7 @@
 const steps = [
-  { number: "01", title: "撮影・入力", en: "Capture" },
-  { number: "02", title: "証拠を確認", en: "Review" },
-  { number: "03", title: "公開", en: "Publish" }
+  { number: "01", title: "撮影・入力" },
+  { number: "02", title: "画像・内容確認" },
+  { number: "03", title: "公開" }
 ];
 
 export function ProcessSteps({ current }: { current: 1 | 2 | 3 }) {
@@ -16,7 +16,6 @@ export function ProcessSteps({ current }: { current: 1 | 2 | 3 }) {
             <span className="step-number">{step.number}</span>
             <span>
               <strong>{step.title}</strong>
-              <small>{step.en}</small>
             </span>
           </div>
         );
@@ -24,4 +23,3 @@ export function ProcessSteps({ current }: { current: 1 | 2 | 3 }) {
     </nav>
   );
 }
-

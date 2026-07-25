@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { isReferenceEstimate } from "@/lib/reference-estimate";
 import type { AccessCard, EvidenceSection } from "@/lib/types";
+import { AccessOverview } from "./access-overview";
+import { EvidenceGallery } from "./evidence-gallery";
 
 type Lang = "ja" | "en";
 
@@ -48,7 +51,14 @@ export function PublicCard({
     "communication",
     "restroom"
   ];
-  const known = card.items.filter((item) => item.status !== "unknown");
+  const estimates = card.items.filter((item) => isReferenceEstimate(item));
+  const observations = card.items.filter(
+    (item) => item.status === "ai_observed" && !isReferenceEstimate(item)
+  );
+  const staffConfirmed = card.items.filter(
+    (item) =>
+      ["staff_stated", "staff_measured", "confirmed"].includes(item.status)
+  );
   const unknown = card.items.filter((item) => item.status === "unknown");
   const heroFrame = card.frames[0];
 
@@ -59,7 +69,7 @@ export function PublicCard({
           <span className="brand-mark">O</span>
           <strong>OPEN DOOR TOKYO</strong>
         </Link>
-        <nav className="language-toggle" aria-label="Language">
+        <nav className="language-toggle" aria-label="表示言語">
           <Link className={lang === "ja" ? "active" : ""} href={`/c/${card.brief.cardId}?lang=ja`}>
             日本語
           </Link>
@@ -72,18 +82,31 @@ export function PublicCard({
       <section className="venue-hero">
         <div className="venue-copy">
           <span className="verified-date">
-            {lang === "ja" ? "店舗確認" : "Venue verified"} · {card.lastVerifiedAt ?? "2026-07-25"}
+            {lang === "ja" ? "店舗確認済み" : "Venue verified"} · {card.lastVerifiedAt ?? "2026-07-25"}
           </span>
-          <h1>{card.brief.name}</h1>
+          <h1>
+            {card.brief.name}
+            <small>
+              {lang === "ja" ? "来店前アクセス案内" : "Before-you-visit access guide"}
+            </small>
+          </h1>
           <p>
             {lang === "ja"
-              ? "入口から席までの、来店前に確認できる具体的な情報です。"
-              : "Concrete information you can review before visiting, from the entrance to your seat."}
+              ? "お店に電話しなくても、入口の段差・幅・筆談の様子を、行く前に自分の目で確かめられます。"
+              : "Concrete facts and range-based reference estimates to help you decide before visiting, without a phone call."}
           </p>
           <div className="fact-summary">
             <span>
-              <strong>{known.length}</strong>
-              {lang === "ja" ? "確認済みの事実" : "verified facts"}
+              <strong>{observations.length}</strong>
+              {lang === "ja" ? "AI観察" : "AI observations"}
+            </span>
+            <span>
+              <strong>{staffConfirmed.length}</strong>
+              {lang === "ja" ? "スタッフ確認済み" : "staff confirmed"}
+            </span>
+            <span>
+              <strong>{estimates.length}</strong>
+              {lang === "ja" ? "AI参考推定" : "AI estimates"}
             </span>
             <span>
               <strong>{unknown.length}</strong>
@@ -105,12 +128,15 @@ export function PublicCard({
         )}
       </section>
 
+      <AccessOverview card={card} lang={lang} />
+      <EvidenceGallery frames={card.frames} lang={lang} />
+
       <aside className="scope-notice">
         <strong>{lang === "ja" ? "このカードについて" : "About this card"}</strong>
         <p>
           {lang === "ja"
-            ? "これは認定や適合判定ではありません。店舗の映像とスタッフ確認に基づく、具体的な来店前情報です。必要な配慮は店舗へ直接ご相談ください。"
-            : "This is not a certification or conformance assessment. It records concrete facts from venue video and staff confirmation. Contact the venue about your individual needs."}
+            ? "これは認定や利用可否の判定ではありません。AI参考推定は映像から得た幅付きの目安で、実測値と明確に区別しています。具体的な事実と未確認事項を合わせて、ご自身の来店判断にお使いください。"
+            : "This is not certification or a usability decision. AI reference estimates are video-based ranges, clearly separated from measured values. Use the concrete facts and unknowns to make your own visit decision."}
         </p>
       </aside>
 
@@ -126,18 +152,44 @@ export function PublicCard({
               <div className="fact-section-title">
                 <span>{meta.index}</span>
                 <h2>{meta[lang]}</h2>
-                <small>{meta[lang === "ja" ? "en" : "ja"]}</small>
+                {lang === "en" && <small>{meta.ja}</small>}
               </div>
               <div className="fact-list">
                 {items.map((item) => {
+                  const isEstimate = isReferenceEstimate(item);
                   const frameId = item.provenance.find((source) => source.frameId)?.frameId;
                   const frame = card.frames.find((candidate) => candidate.frameId === frameId);
                   return (
-                    <article className="public-fact" key={item.id}>
-                      <div className="fact-check" aria-hidden="true">✓</div>
+                    <article
+                      className={`public-fact ${isEstimate ? "is-estimate" : ""}`}
+                      key={item.id}
+                    >
+                      <div className="fact-check" aria-hidden="true">
+                        {isEstimate ? "≈" : "●"}
+                      </div>
                       <div>
+                        <span className="public-fact-origin">
+                          {isEstimate
+                            ? lang === "ja"
+                              ? "AI参考推定"
+                              : "AI reference estimate"
+                            : item.status === "ai_observed"
+                              ? lang === "ja"
+                                ? "AI観察"
+                                : "AI observed"
+                              : lang === "ja"
+                                ? "スタッフ確認済み"
+                                : "Staff confirmed"}
+                        </span>
                         <h3>{item.label[lang]}</h3>
                         <p>{item.description[lang]}</p>
+                        {isEstimate && (
+                          <p className="reference-estimate-disclaimer">
+                            {lang === "ja"
+                              ? "映像からの参考推定、実測ではありません。"
+                              : "Video-based reference estimate; not a measured value."}
+                          </p>
+                        )}
                         <details>
                           <summary>
                             {lang === "ja" ? "根拠を見る" : "View evidence"}
@@ -174,8 +226,8 @@ export function PublicCard({
             <h2>{lang === "ja" ? "まだ確認できていないこと" : "Not yet verified"}</h2>
             <p>
               {lang === "ja"
-                ? "推測で埋めず、未確認として公開しています。"
-                : "These are shown as unknown rather than filled with assumptions."}
+                ? "安全な幅付き推定もできない項目は、未確認として公開しています。"
+                : "Items without enough evidence for a safe range estimate remain unknown."}
             </p>
           </div>
         </div>
@@ -192,12 +244,12 @@ export function PublicCard({
       {!embed && <footer className="public-footer">
         <div>
           <strong>OPEN DOOR TOKYO</strong>
-          <span>We do not certify. We clarify.</span>
+          <span>{lang === "ja" ? "認定ではなく、判断材料を。" : "We do not certify. We clarify."}</span>
         </div>
         <p>
           {lang === "ja"
-            ? `最終確認 ${card.lastVerifiedAt ?? "2026-07-25"} · 情報は来店前に店舗へ再確認してください。`
-            : `Last verified ${card.lastVerifiedAt ?? "2026-07-25"} · Reconfirm details with the venue before visiting.`}
+            ? `最終確認 ${card.lastVerifiedAt ?? "2026-07-25"} · 参考推定は実測値ではなく、利用可否を保証しません。`
+            : `Last verified ${card.lastVerifiedAt ?? "2026-07-25"} · Reference estimates are not measurements and do not guarantee usability.`}
         </p>
       </footer>}
     </main>

@@ -132,6 +132,182 @@ describe("provider mode honesty", () => {
     });
   });
 
+  it("applies a width-bearing Qwen reference estimate without presenting it as measured", async () => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";
+    process.env.QWEN_REGION = "intl";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "request-estimate",
+          model: "qwen3.6-flash",
+          usage: {
+            prompt_tokens: 30,
+            completion_tokens: 12,
+            total_tokens: 42
+          },
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  observations: [
+                    {
+                      field: "entrance.step_height_cm",
+                      description_ja: "段差は4cm程度に見えます",
+                      description_en: "The step appears about 4 cm high",
+                      status: "ai_observed",
+                      observation_type: "reference_estimate",
+                      estimate_range_cm: { min: 3, max: 5 },
+                      confidence: 0.62,
+                      frame_id: "frame-01"
+                    }
+                  ],
+                  unknowns: [],
+                  proposed_claims: []
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await analyzeWithQwen({
+      cardId: "reference-estimate",
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [
+        {
+          frameId: "frame-01",
+          tSec: 2.5,
+          dataUrl: "data:image/jpeg;base64,REAL"
+        }
+      ],
+      useFixture: false
+    });
+
+    const estimate = result.data.items.find(
+      (item) => item.field === "entrance.step_height_cm"
+    );
+    expect(result.trace.mode).toBe("live");
+    expect(estimate).toMatchObject({
+      status: "ai_observed",
+      value: "reference_estimate_cm:3-5",
+      confirmedByStaff: false,
+      description: {
+        ja: "映像からの参考推定：約3〜5cm（実測ではありません）",
+        en: "Video-based reference estimate: approx. 3-5 cm (not a measured value)"
+      }
+    });
+    expect(estimate?.provenance[0]).toMatchObject({
+      kind: "video_frame",
+      frameId: "frame-01",
+      tSec: 2.5
+    });
+    const requestBody = JSON.parse(
+      String(fetchMock.mock.calls[0][1]?.body)
+    ) as { messages: unknown };
+    expect(JSON.stringify(requestBody.messages)).toContain(
+      "Never decide whether a wheelchair user can use the venue"
+    );
+    expect(JSON.stringify(requestBody.messages)).toContain(
+      "reference_estimate_fields"
+    );
+  });
+
+  it.each([
+    [
+      "an exact number without range width",
+      {
+        description_ja: "段差は4cmです",
+        description_en: "The step is 4 cm",
+        estimate_range_cm: { min: 4, max: 4 },
+        confidence: 0.6
+      }
+    ],
+    [
+      "an overconfident estimate",
+      {
+        description_ja: "段差は約3〜5cmです",
+        description_en: "The step is about 3-5 cm",
+        estimate_range_cm: { min: 3, max: 5 },
+        confidence: 0.96
+      }
+    ],
+    [
+      "a wheelchair usability decision",
+      {
+        description_ja: "約3〜5cmなので車椅子で利用可能です",
+        description_en: "The 3-5 cm step is wheelchair accessible",
+        estimate_range_cm: { min: 3, max: 5 },
+        confidence: 0.6
+      }
+    ]
+  ])("fails closed for Qwen reference estimate with %s", async (_label, unsafe) => {
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";
+    process.env.QWEN_REGION = "intl";
+    process.env.GUARD_QWEN_CHAT_MAX_ACTION_COST_USD = "0.01";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            model: "qwen3.6-flash",
+            usage: {
+              prompt_tokens: 20,
+              completion_tokens: 10,
+              total_tokens: 30
+            },
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    observations: [
+                      {
+                        field: "entrance.step_height_cm",
+                        status: "ai_observed",
+                        observation_type: "reference_estimate",
+                        frame_id: "frame-01",
+                        ...unsafe
+                      }
+                    ],
+                    unknowns: [],
+                    proposed_claims: []
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+      )
+    );
+
+    const result = await analyzeWithQwen({
+      cardId: `unsafe-estimate-${_label}`,
+      brief: { name: "Venue", category: "cafe", languages: ["ja", "en"] },
+      frames: [
+        {
+          frameId: "frame-01",
+          tSec: 2,
+          dataUrl: "data:image/jpeg;base64,REAL"
+        }
+      ],
+      useFixture: false
+    });
+    expect(result.trace).toMatchObject({
+      mode: "fallback",
+      ok: false,
+      validation: "failed"
+    });
+    expect(result.data.items.every((item) => item.status === "unknown")).toBe(
+      true
+    );
+  });
+
   it("does not call Qwen when its configured region is unsupported", async () => {
     process.env.DASHSCOPE_API_KEY = "test-key";
     process.env.QWEN_BASE_URL = "https://qwen.invalid/v1";

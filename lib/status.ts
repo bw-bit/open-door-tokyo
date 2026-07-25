@@ -10,10 +10,10 @@ export const fieldStatusLabels: Record<FieldStatus, LocalizedText> = {
 };
 
 export const providerModeLabels: Record<ProviderMode, string> = {
-  live: "LIVE",
-  verified_sample: "VERIFIED SAMPLE",
-  fallback: "FALLBACK",
-  not_configured: "NOT CONFIGURED"
+  live: "実API",
+  verified_sample: "検証済みサンプル",
+  fallback: "安全フォールバック",
+  not_configured: "未接続"
 };
 
 const transitions: Record<CardState, CardState[]> = {

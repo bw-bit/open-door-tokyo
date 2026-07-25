@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "OPEN DOOR TOKYO",
   description:
-    "店舗動画を、証拠付きの来店前アクセシビリティ情報へ変換するAIエージェント"
+    "店舗動画から、電話せず来店判断できる具体的な事実と幅付き参考推定を示すAIエージェント"
 };
 
 export default function RootLayout({
@@ -16,4 +16,3 @@ export default function RootLayout({
     </html>
   );
 }
-

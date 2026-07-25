@@ -675,6 +675,10 @@ video {
   color: var(--amber);
 }
 
+.review-counts .estimate-count strong {
+  color: #9a6500;
+}
+
 .section-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -733,6 +737,11 @@ video {
 
 .evidence-row.is-unknown {
   background: #fffdf8;
+}
+
+.evidence-row.is-estimate {
+  background: #fffaf0;
+  box-shadow: inset 3px 0 0 #d99a24;
 }
 
 .evidence-source {
@@ -811,6 +820,11 @@ video {
   background: var(--amber-light);
 }
 
+.evidence-row.is-estimate .status {
+  color: #815300;
+  background: #fff0c9;
+}
+
 .evidence-body h3 {
   margin: 0 0 6px;
   color: var(--ink-deep);
@@ -823,6 +837,16 @@ video {
   color: #506771;
   font-size: 11px;
   line-height: 1.6;
+}
+
+.reference-estimate-note {
+  margin-top: 8px !important;
+  padding: 7px 9px;
+  color: #6b531f !important;
+  background: #fff4d8;
+  border-left: 2px solid #d99a24;
+  font-size: 9px !important;
+  font-weight: 700;
 }
 
 .staff-prompt {
@@ -1349,6 +1373,7 @@ video {
 
 .fact-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 28px;
   margin-top: 28px;
   padding-top: 19px;
@@ -1482,6 +1507,27 @@ video {
   font-size: 11px;
 }
 
+.public-fact.is-estimate .fact-check {
+  color: #513600;
+  background: #e9b64c;
+}
+
+.public-fact-origin {
+  display: inline-block;
+  margin-bottom: 5px;
+  padding: 3px 6px;
+  color: var(--teal);
+  background: var(--teal-light);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.public-fact.is-estimate .public-fact-origin {
+  color: #815300;
+  background: #fff0c9;
+}
+
 .public-fact h3 {
   margin: 1px 0 4px;
   font-size: 11px;
@@ -1493,6 +1539,14 @@ video {
   font-family: "Yu Mincho", Georgia, serif;
   font-size: 15px;
   line-height: 1.55;
+}
+
+.public-fact .reference-estimate-disclaimer {
+  margin-top: 6px;
+  color: #765c25;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
 }
 
 .public-fact details {
@@ -1872,5 +1926,300 @@ video {
   .evidence-detail > img {
     width: 100%;
     height: auto;
+  }
+}
+
+/* Japanese-first overview and captured visual evidence */
+.listing-location-fields {
+  margin: 10px 0 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.listing-location-fields > summary {
+  padding: 13px 15px;
+  color: var(--ink-deep);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.listing-location-fields > p {
+  margin: 0;
+  padding: 0 15px 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.listing-location-fields .venue-field {
+  margin: 0 14px 10px;
+}
+
+.analysis-captures {
+  padding: 14px;
+  border-top: 1px solid var(--line);
+  background: #f7faf9;
+}
+
+.analysis-captures-heading,
+.evidence-gallery-heading,
+.access-overview-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.analysis-captures-heading {
+  margin-bottom: 10px;
+}
+
+.analysis-captures-heading strong {
+  color: var(--ink-deep);
+  font-size: 11px;
+}
+
+.analysis-captures-heading span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.analysis-captures-grid,
+.evidence-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.analysis-captures-grid figure,
+.evidence-gallery-grid figure {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--line);
+  background: #e8efed;
+}
+
+.analysis-captures-grid img,
+.evidence-gallery-grid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.analysis-captures-grid figcaption,
+.evidence-gallery-grid figcaption {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  padding: 3px 6px;
+  color: #fff;
+  background: rgba(23, 50, 74, 0.9);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.access-overview,
+.evidence-gallery {
+  margin: 28px clamp(20px, 5vw, 76px);
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.review-main > .access-overview,
+.review-main > .evidence-gallery {
+  margin: 18px 0;
+}
+
+.access-overview-heading,
+.evidence-gallery-heading {
+  margin-bottom: 18px;
+}
+
+.access-overview-heading h2,
+.evidence-gallery-heading h2 {
+  margin: 4px 0 0;
+  color: var(--ink-deep);
+  font-family: Georgia, "Yu Mincho", serif;
+  font-size: clamp(19px, 2vw, 28px);
+  font-weight: 500;
+}
+
+.access-overview-heading h2 {
+  white-space: nowrap;
+}
+
+.access-overview-heading > p,
+.evidence-gallery-heading > p {
+  max-width: 430px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.access-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.overview-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  padding: 12px 8px 10px;
+  border: 1px solid var(--line);
+  background: #fbfcfc;
+  text-align: center;
+}
+
+.overview-item > strong {
+  min-height: 30px;
+  margin-top: 5px;
+  color: var(--ink-deep);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.overview-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.overview-state b {
+  font-size: 9px;
+}
+
+.state-information .overview-state {
+  color: #0c615b;
+  background: #dff1ed;
+}
+
+.state-estimate .overview-state {
+  color: #765000;
+  background: #fff0c9;
+}
+
+.state-unknown .overview-state {
+  color: #667178;
+  background: #e9edef;
+}
+
+.access-pictogram {
+  display: block;
+  width: 58px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  background-image: url("/access/access-pictograms-v1.png");
+  background-repeat: no-repeat;
+  background-size: 300% 200%;
+}
+
+.pictogram-wheelchair {
+  background-position: 0 0;
+}
+
+.pictogram-stroller {
+  background-position: 50% 0;
+}
+
+.pictogram-white-cane {
+  background-position: 100% 0;
+}
+
+.pictogram-writing {
+  background-position: 0 100%;
+}
+
+.pictogram-step {
+  background-position: 50% 100%;
+}
+
+.pictogram-width {
+  background-position: 100% 100%;
+}
+
+.evidence-gallery-grid figcaption {
+  display: flex;
+  left: 5px;
+  justify-content: space-between;
+}
+
+.evidence-gallery-grid figcaption span {
+  margin-right: 7px;
+  color: #b8d8d3;
+}
+
+.venue-copy h1 small {
+  display: block;
+  margin-top: 8px;
+  color: var(--teal);
+  font-family: inherit;
+  font-size: 0.35em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.public-fact .fact-check {
+  font-size: 8px;
+}
+
+@media (max-width: 900px) {
+  .access-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .analysis-captures-grid,
+  .evidence-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .access-overview,
+  .evidence-gallery {
+    margin: 20px;
+    padding: 16px;
+  }
+
+  .review-main > .access-overview,
+  .review-main > .evidence-gallery {
+    margin-inline: 0;
+  }
+
+  .access-overview-heading,
+  .evidence-gallery-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .access-overview-heading h2 {
+    white-space: normal;
+  }
+
+  .access-overview-grid {
+    gap: 6px;
+  }
+
+  .overview-item {
+    padding-inline: 5px;
+  }
+
+  .access-pictogram {
+    width: 52px;
   }
 }

@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isReferenceEstimate } from "@/lib/reference-estimate";
 import { providerModeLabels } from "@/lib/status";
 import type { AccessCard } from "@/lib/types";
+import { AccessOverview } from "./access-overview";
+import { EvidenceGallery } from "./evidence-gallery";
 import { EvidenceRow } from "./evidence-row";
 import { ProviderTraceRail } from "./provider-trace";
 
@@ -99,7 +102,13 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
   const [origin, setOrigin] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
   const [listingSync, setListingSync] = useState<
-    "not_configured" | "delivered" | "rejected" | "timeout" | "transport_failed"
+    | "not_configured"
+    | "missing_location"
+    | "schema_invalid"
+    | "delivered"
+    | "rejected"
+    | "timeout"
+    | "transport_failed"
   >("not_configured");
   const [error, setError] = useState("");
 
@@ -147,6 +156,15 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
     (item) => item.section === selectedSection
   );
   const unknownCount = card.items.filter((item) => item.status === "unknown").length;
+  const estimateCount = card.items.filter((item) =>
+    isReferenceEstimate(item)
+  ).length;
+  const observationCount = card.items.filter(
+    (item) => item.status === "ai_observed" && !isReferenceEstimate(item)
+  ).length;
+  const staffConfirmedCount = card.items.filter((item) =>
+    ["staff_stated", "staff_measured", "confirmed"].includes(item.status)
+  ).length;
 
   async function confirm() {
     setBusy("confirm");
@@ -218,11 +236,21 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
     publishedPath && origin ? `${origin}${publishedPath}` : "";
   const embedUrl = publicUrl ? `${publicUrl}?embed=1` : "";
   const embedCode = embedUrl
-    ? `<iframe src="${embedUrl}" title="${card.brief.name} Access Card" loading="lazy" style="width:100%;min-height:720px;border:0"></iframe>`
+    ? `<iframe src="${embedUrl}" title="${card.brief.name} 来店前アクセス案内" loading="lazy" style="width:100%;min-height:720px;border:0"></iframe>`
     : "";
   const mapsCopy = publicUrl
     ? `来店前のアクセス情報（入口・段差・通路・コミュニケーション）: ${publicUrl}`
     : "";
+  const listingSyncMessage =
+    listingSync === "delivered"
+      ? "利用者向けマップにも自動掲載しました。"
+      : listingSync === "missing_location"
+        ? "住所を入力しなかったため、マップ掲載だけ省略しました。公開URLはそのまま使えます。"
+        : listingSync === "schema_invalid" || listingSync === "rejected"
+          ? "地図側の形式確認で安全に停止しました。公開URLと埋め込みは利用できます。"
+          : listingSync === "timeout" || listingSync === "transport_failed"
+            ? "地図への送信完了を確認できませんでした。二重送信せず、公開URLを表示します。"
+            : "マップ自動掲載先は未接続です。公開URL・掲載文・埋め込みHTMLはすぐ使えます。";
 
   return (
     <>
@@ -230,24 +258,29 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
         <section className="review-main">
           <div className="review-title">
             <div>
-              <span className="eyebrow">EVIDENCE REVIEW</span>
-              <h1>AIの観察を、店舗の事実へ。</h1>
+              <span className="eyebrow">公開前の確認</span>
+              <h1>公開前に、お店の方が確かめてください。</h1>
               <p>
-                証拠を見ながら確認してください。測定できない項目は、
-                未確認のまま公開できます。
+                AIが動画から整理した内容です。画像を見ながら直し、分からない所は
+                「未確認」のまま公開できます。参考推定は実測値ではありません。
               </p>
             </div>
             <div className="review-counts">
               <span><strong>{card.items.length}</strong>抽出項目</span>
               <span className="confirmed-count">
-                <strong>{card.items.length - unknownCount}</strong>観察・回答
+                <strong>{observationCount}</strong>AI観察
               </span>
+              <span className="estimate-count"><strong>{estimateCount}</strong>AI参考推定</span>
+              <span><strong>{staffConfirmedCount}</strong>スタッフ確認済み</span>
               <span className="unknown-count"><strong>{unknownCount}</strong>未確認</span>
             </div>
           </div>
 
+          <AccessOverview card={card} compact />
+          <EvidenceGallery frames={card.frames} compact />
+
           <div className="section-tabs" role="tablist" aria-label="証拠の分類">
-            {sections.map(([id, ja, en]) => (
+            {sections.map(([id, ja]) => (
               <button
                 key={id}
                 className={selectedSection === id ? "active" : ""}
@@ -255,7 +288,6 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                 type="button"
               >
                 <strong>{ja}</strong>
-                <small>{en}</small>
               </button>
             ))}
           </div>
@@ -275,11 +307,11 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
 
         <div className="review-side">
           <section className="safety-panel">
-            <div className="panel-kicker">SAFETY AUDIT</div>
+            <div className="panel-kicker">言い過ぎを防ぐ安全確認</div>
             <div className="blocked-headline">
               <span aria-hidden="true">×</span>
               <div>
-                <small>BLOCKED CLAIM</small>
+                <small>使わない表現</small>
                 <strong>「{blockedClaim?.text ?? "車椅子で利用可能"}」</strong>
               </div>
             </div>
@@ -290,14 +322,15 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
             </div>
             <div className="audit-method">
               <span>決定論ルール</span>
-              <strong>PASS</strong>
-              <span>GMIセカンドチェック</span>
+              <strong>合格</strong>
+              <span>GMIによる再確認</span>
               <strong>{providerModeLabels[card.safetyAudit.auditedBy.gmi]}</strong>
             </div>
           </section>
           <section className="attestation-panel">
             <div className="panel-kicker">
-              STAFF FACTS {isDemo && <span className="inline-demo">DEMO VALUES</span>}
+              店舗で確認する事実{" "}
+              {isDemo && <span className="inline-demo">デモ入力済み</span>}
             </div>
             <div className="confirmation-grid">
               <label>
@@ -389,10 +422,13 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                 </label>
               ))}
             </div>
-            <p>空欄は推測せず「未確認」のまま残ります。</p>
+            <p>
+              スタッフ実測を入力するとAI参考推定を置き換えます。空欄でも推定を
+              実測値として扱うことはありません。
+            </p>
           </section>
           <section className="attestation-panel">
-            <div className="panel-kicker">HUMAN APPROVAL</div>
+            <div className="panel-kicker">人による公開確認</div>
             <label>
               <span>確認者名</span>
               <input
@@ -409,7 +445,8 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
                 disabled={ready}
               />
               <span>
-                映像・実測値・未確認項目を確認し、包括的な利用可否を認定しないことに同意します。
+                AI観察・参考推定・実測値・未確認項目を確認し、参考推定を実測とせず、
+                包括的な利用可否を認定しないことに同意します。
               </span>
             </label>
             <p>確認後、10分間だけ有効な署名付き公開承認を発行します。</p>
@@ -466,13 +503,11 @@ export function ReviewClient({ initialCard }: { initialCard: AccessCard }) {
       {publishedPath && (
         <div className="publish-overlay" role="dialog" aria-modal="true" aria-labelledby="published-title">
           <div className="publish-dialog">
-            <span className="success-label">PUBLISHED</span>
-            <h2 id="published-title">来店前 Access Card を公開しました</h2>
-            <p>スマートフォンでQRコードを読み、証拠付きの日英カードを確認できます。</p>
+            <span className="success-label">公開完了</span>
+            <h2 id="published-title">来店前アクセス案内を公開しました</h2>
+            <p>QRコードから、画像付きの来店前情報を確認できます。</p>
             <p className={`listing-sync listing-sync-${listingSync}`}>
-              {listingSync === "delivered"
-                ? "利用者向けマップにも自動掲載しました。"
-                : "マップ自動掲載先は未接続です。下のURL・掲載文・埋め込みHTMLはすぐ使えます。"}
+              {listingSyncMessage}
             </p>
             <img
               className="qr-image"

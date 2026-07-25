@@ -17,6 +17,15 @@ const schema = z.object({
     name: z.string().min(1).max(120),
     category: z.enum(["cafe", "restaurant", "other"]),
     sourceUrl: z.string().url().optional(),
+    address: z.object({
+      ja: z.string().trim().min(1).max(240),
+      en: z.string().trim().min(1).max(240)
+    }).optional(),
+    googleMapsUrl: z.string().url().optional(),
+    location: z.object({
+      lat: z.number().min(35.4).max(35.95),
+      lng: z.number().min(138.9).max(140.1)
+    }).optional(),
     languages: z.array(z.enum(["ja", "en"])).min(1)
   }),
   frames: z.array(

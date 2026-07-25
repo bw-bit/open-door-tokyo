@@ -4,6 +4,11 @@ import { z } from "zod";
 import { getDemoAnalysisCard } from "../fixtures";
 import { reconcile, reserve } from "../guard";
 import { auditClaim } from "../safety/deterministic";
+import {
+  canUseReferenceEstimate,
+  encodeReferenceEstimate,
+  referenceEstimateDescription
+} from "../reference-estimate";
 import type { AccessCard, AnalyzeRequest, ProviderResult } from "../types";
 import {
   type ChatContentPart,
@@ -48,6 +53,18 @@ const extractionSchema = z.object({
       description_ja: z.string().min(1).max(240),
       description_en: z.string().min(1).max(240),
       status: z.enum(["ai_observed", "unknown"]),
+      observation_type: z
+        .enum(["visible_fact", "reference_estimate"])
+        .optional()
+        .default("visible_fact"),
+      estimate_range_cm: z
+        .object({
+          min: z.number().min(0).max(500),
+          max: z.number().min(0).max(500)
+        })
+        .strict()
+        .nullable()
+        .optional(),
       confidence: z.number().min(0).max(1),
       frame_id: z.string().nullable()
     }).strict()
@@ -66,6 +83,27 @@ const extractionSchema = z.object({
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "unknown observation cannot cite evidence"
+      });
+    }
+    const estimate = observation.estimate_range_cm;
+    if (observation.observation_type === "reference_estimate") {
+      if (
+        observation.status !== "ai_observed" ||
+        !observation.frame_id ||
+        !canUseReferenceEstimate(observation.field) ||
+        !estimate ||
+        estimate.max - estimate.min < 1 ||
+        observation.confidence > 0.75
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "unsafe reference estimate"
+        });
+      }
+    } else if (estimate !== undefined && estimate !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "visible fact cannot contain an estimate range"
       });
     }
   }
@@ -162,8 +200,8 @@ function unknownCardForRequest(request: AnalyzeRequest): AccessCard {
       en: "A venue video alone cannot establish usability for every individual."
     },
     suggestion: {
-      ja: "段差、幅、設備、利用方法など、店舗スタッフが確認した具体的な事実だけを記載してください。",
-      en: "State only concrete facts confirmed by venue staff, such as steps, widths, equipment, and assistance."
+      ja: "確認済みの具体的事実、または実測ではないと明示した幅付き参考推定だけを記載してください。",
+      en: "State only verified concrete facts or range-based reference estimates explicitly labeled as not measured."
     },
     resolved: false
   }));
@@ -246,7 +284,10 @@ export async function analyzeWithQwen(
             time_seconds: frame.tSec
           })),
           allowed_fields: ACCESS_FIELDS,
-          staff_only_fields: Array.from(STAFF_ONLY_FIELDS)
+          exact_measurement_fields: Array.from(STAFF_ONLY_FIELDS),
+          reference_estimate_fields: ACCESS_FIELDS.filter((field) =>
+            canUseReferenceEstimate(field)
+          )
         })
       },
       ...request.frames.flatMap<ChatContentPart>((frame) => {
@@ -297,7 +338,7 @@ export async function analyzeWithQwen(
         {
           role: "system",
           content:
-            'Return JSON only: {"observations":[{"field":"allowed field","description_ja":"visible fact","description_en":"visible fact","status":"ai_observed","confidence":0.0,"frame_id":"exact frame id"}],"unknowns":["allowed field"],"proposed_claims":[]}. Use only allowed fields and exact frame ids. Report only directly visible facts. Never infer measurements, assistance, communication service, turning suitability, certification, or universal usability. Put staff-only and unseen fields in unknowns. Keep descriptions concrete and short.'
+            'Return JSON only: {"observations":[{"field":"allowed field","description_ja":"short description","description_en":"short description","status":"ai_observed","observation_type":"visible_fact or reference_estimate","estimate_range_cm":null or {"min":3,"max":5},"confidence":0.0,"frame_id":"exact frame id"}],"unknowns":["allowed field"],"proposed_claims":[]}. Use only allowed fields and exact frame ids. Directly visible non-measurement facts use visible_fact and no range. For reference_estimate_fields only, you may provide a deliberately conservative width-bearing approximate range in centimeters when the frame has enough visual context; never provide a single exact number. A reference estimate must cite one exact frame, have min < max with at least 1 cm width, confidence <= 0.75, and is not a measured fact. If visual context is insufficient, put the field in unknowns. Never estimate assistance, communication service, turning suitability, certification, legal compliance, safety, or wheelchair usability. Never decide whether a wheelchair user can use the venue. proposed_claims must be empty.'
         },
         {
           role: "user",
@@ -315,6 +356,12 @@ export async function analyzeWithQwen(
     });
     if (actualCostUsd === null) throw new ProviderCallError("semantic_invalid");
     const extraction = extractionSchema.parse(safeJson(response.content));
+    if (
+      extraction.proposed_claims.length > 0 ||
+      extraction.proposed_claims.some((claim) => auditClaim(claim))
+    ) {
+      throw new ProviderCallError("semantic_invalid");
+    }
     const liveCard = unknownCardForRequest(request);
     let appliedObservations = 0;
     for (const observation of extraction.observations) {
@@ -322,10 +369,6 @@ export async function analyzeWithQwen(
         (candidate) => candidate.field === observation.field
       );
       if (!item) continue;
-      if (
-        observation.status === "ai_observed" &&
-        STAFF_ONLY_FIELDS.has(observation.field)
-      ) throw new ProviderCallError("semantic_invalid");
       if (
         auditClaim(observation.description_ja) ||
         auditClaim(observation.description_en)
@@ -336,10 +379,30 @@ export async function analyzeWithQwen(
           !liveCard.frames.some((frame) => frame.frameId === observation.frame_id))
       ) continue;
       appliedObservations += 1;
-      item.description = {
-        ja: observation.description_ja,
-        en: observation.description_en
-      };
+      if (observation.observation_type === "reference_estimate") {
+        const estimate = observation.estimate_range_cm;
+        if (!estimate) throw new ProviderCallError("semantic_invalid");
+        item.description = referenceEstimateDescription({
+          minCm: estimate.min,
+          maxCm: estimate.max
+        });
+        item.value = encodeReferenceEstimate({
+          minCm: estimate.min,
+          maxCm: estimate.max
+        });
+        item.unit = "cm";
+      } else {
+        if (
+          observation.status === "ai_observed" &&
+          STAFF_ONLY_FIELDS.has(observation.field)
+        ) {
+          throw new ProviderCallError("semantic_invalid");
+        }
+        item.description = {
+          ja: observation.description_ja,
+          en: observation.description_en
+        };
+      }
       item.status = observation.status;
       item.confidence =
         observation.status === "unknown" ? 0 : observation.confidence;

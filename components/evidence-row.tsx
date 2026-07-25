@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isReferenceEstimate } from "@/lib/reference-estimate";
 import { fieldStatusLabels } from "@/lib/status";
 import type { EvidenceFrame, EvidenceItem } from "@/lib/types";
 
@@ -26,17 +27,24 @@ export function EvidenceRow({
   const frameId = item.provenance.find((source) => source.frameId)?.frameId;
   const frame = frames.find((candidate) => candidate.frameId === frameId);
   const isUnknown = item.status === "unknown";
-  const sourceLabel = fieldStatusLabels[item.status].ja;
+  const isEstimate = isReferenceEstimate(item);
+  const sourceLabel = isEstimate
+    ? "AI参考推定"
+    : fieldStatusLabels[item.status].ja;
   const sourceCount = item.provenance.length;
 
   return (
-    <article className={`evidence-row ${isUnknown ? "is-unknown" : ""}`}>
+    <article
+      className={`evidence-row ${isUnknown ? "is-unknown" : ""} ${
+        isEstimate ? "is-estimate" : ""
+      }`}
+    >
       <div className="evidence-source">
         {frame ? (
           <img src={frame.url} alt={frame.alt.ja} />
         ) : (
           <div className="no-frame">
-            <span>STAFF</span>
+            <span>店舗確認</span>
             <small>回答が必要</small>
           </div>
         )}
@@ -49,12 +57,18 @@ export function EvidenceRow({
       <div className="evidence-body">
         <div className="evidence-label">
           <span className={`status status-${item.status}`}>
-            {fieldStatusLabels[item.status].ja}
+            {isEstimate ? "AI参考推定" : fieldStatusLabels[item.status].ja}
           </span>
           <small>{item.field}</small>
         </div>
         <h3>{item.label.ja}</h3>
         <p>{item.description.ja}</p>
+        {isEstimate && (
+          <p className="reference-estimate-note">
+            映像からの参考推定、実測ではありません。証拠フレーム
+            {frame ? ` ${formatTime(frame.tSec)}` : ""}を確認してください。
+          </p>
+        )}
         {item.staffPrompt && <strong className="staff-prompt">{item.staffPrompt.ja}</strong>}
         {editable && (
           <div className="manual-correction">
@@ -84,7 +98,7 @@ export function EvidenceRow({
                   />
                 </label>
                 <label>
-                  <span>English</span>
+                  <span>英語</span>
                   <textarea
                     aria-label={`${item.label.ja}の英語説明`}
                     value={item.description.en}
@@ -118,10 +132,17 @@ export function EvidenceRow({
         )}
       </div>
       <div className="evidence-source-label">
-        <span>SOURCE</span>
+        <span>情報の出どころ</span>
         <strong>{sourceLabel}</strong>
         <small>{sourceCount > 0 ? `根拠 ${sourceCount}件` : "根拠未確認"}</small>
       </div>
     </article>
   );
+}
+
+function formatTime(seconds: number) {
+  const wholeSeconds = Math.max(0, Math.round(seconds));
+  return `${String(Math.floor(wholeSeconds / 60)).padStart(2, "0")}:${String(
+    wholeSeconds % 60
+  ).padStart(2, "0")}`;
 }

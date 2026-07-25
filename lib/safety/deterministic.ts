@@ -120,8 +120,8 @@ export const safetyRules: SafetyRule[] = [
 ];
 
 const defaultSuggestion: LocalizedText = {
-  ja: "段差、幅、設備、利用方法など、確認済みの具体的な事実だけを記載してください。",
-  en: "State only verified facts such as steps, widths, equipment, and how assistance is requested."
+  ja: "確認済みの具体的事実、または実測ではないと明示した幅付き参考推定だけを記載してください。",
+  en: "State only verified concrete facts or range-based reference estimates explicitly labeled as not measured."
 };
 
 export function auditClaim(text: string): BlockedClaim | null {

@@ -18,10 +18,10 @@ const defaultTasks: Record<ProviderId, string> = {
 };
 
 const validationLabels = {
-  schema_and_semantic_passed: "SCHEMA + SEMANTIC PASS",
-  verified_sample: "SAMPLE VALIDATED",
-  not_run: "NOT RUN",
-  failed: "VALIDATION FAILED"
+  schema_and_semantic_passed: "形式・内容とも合格",
+  verified_sample: "サンプル検証済み",
+  not_run: "未実行",
+  failed: "検証不合格"
 } as const;
 
 export function ProviderTraceRail({
@@ -36,7 +36,7 @@ export function ProviderTraceRail({
   return (
     <aside className="trace-rail" aria-label="AIスタック実行状況">
       <div className="rail-heading">
-        <span>AGENT TRACE</span>
+        <span>AI実行履歴</span>
         <small>コードレベル統合</small>
       </div>
       <div className="trace-list">
@@ -53,15 +53,15 @@ export function ProviderTraceRail({
                 {trace && (
                   <dl className="trace-meta">
                     <div>
-                      <dt>LATENCY</dt>
+                      <dt>処理時間</dt>
                       <dd>{trace.latencyMs}ms</dd>
                     </div>
                     <div>
-                      <dt>REFERENCE</dt>
+                      <dt>参照ID</dt>
                       <dd>{trace.requestId ?? trace.reservationId ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt>VALIDATION</dt>
+                      <dt>検証</dt>
                       <dd>
                         {validationLabels[
                           trace.validation ??
@@ -77,7 +77,7 @@ export function ProviderTraceRail({
                 )}
               </div>
               <span className={`mode mode-${mode}`}>
-                {active ? "RUNNING" : providerModeLabels[mode]}
+                {active ? "実行中" : providerModeLabels[mode]}
               </span>
             </div>
           );

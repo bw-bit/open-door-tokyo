@@ -1,24 +1,28 @@
 # OPEN DOOR TOKYO
 
-入口から席までを、行く前に分かる情報へ。
+電話せず、行く前に判断できる情報へ。
 
-店舗の短いガイド動画から、入口・通路・席・コミュニケーション方法を整理し、根拠付きの日英 Access Card を公開するAIエージェントです。店舗を「利用可能」と認定するのではなく、映像で観察した事実、スタッフが測定・回答した事実、未確認事項を分けて示します。
+店舗の短いガイド動画から4枚の時刻付き画像を自動抽出し、入口・通路・席・
+コミュニケーション方法を整理して、画像付きの来店前アクセス案内を公開する
+AIエージェントです。店舗を「利用可能」と認定するのではなく、AI観察、
+幅付きの参考推定、スタッフが測定・回答した事実、未確認事項を分けて示します。
 
 本番デモ: https://open-door-tokyo.vercel.app
 
 ## デモで起きること
 
 1. スマートフォンで撮影した MP4 / MOV の店舗ツアー動画を入力
-2. 最大4枚の代表フレームを端末内で抽出し、Qwen 3.6 Flash VL が観察事実と未確認事項を構造化
-3. 接続時は Nosana がGPU証拠フレーム索引ジョブを実行・追跡
-4. 決定論ルールが「車椅子で利用可能」という根拠不足の断定を停止し、接続時は GMI Cloud が再監査
-5. 店舗スタッフがAIの記述を手動修正し、入口幅などを測定・確認
-6. 接続時は ai& が日英表現を確認
-7. 接続時は Daytona が公開カードを隔離サンドボックスで検査
-8. 人が明示的に公開し、QR、公開URL、Google掲載文、iframe埋め込みを生成
-9. 接続時は署名付きWebhookで利用者向けマップへ冪等に自動掲載
+2. 最大4枚の代表フレームを端末内で抽出し、分析中・店舗確認・公開ページに同じ画像を表示
+3. Qwen 3.6 Flash VL が観察事実、幅付き参考推定、未確認事項を構造化
+4. 接続時は Nosana がGPU証拠フレーム索引ジョブを実行・追跡
+5. 決定論ルールが「車椅子で利用可能」という根拠不足の断定を停止し、接続時は GMI Cloud が再監査
+6. 店舗スタッフがAIの記述を手動修正し、入口幅などを測定・確認
+7. 接続時は ai& が日英表現を確認
+8. 接続時は Daytona が公開カードを隔離サンドボックスで検査
+9. 人が明示的に公開し、QR、公開URL、Google掲載文、iframe埋め込みを生成
+10. 接続時は署名付きWebhookで利用者向けマップへ冪等に自動掲載
 
-各サービスは `LIVE`、`VERIFIED SAMPLE`、`FALLBACK`、`NOT CONFIGURED`
+各サービスは `実API`、`検証済みサンプル`、`安全フォールバック`、`未接続`
 のいずれかを実行履歴に表示します。サンプル、ライブ失敗、未設定を混同しません。
 
 ## ローカル起動
@@ -53,7 +57,7 @@ npm audit --omit=dev
 検証済み結果:
 
 - TypeScript: pass
-- 安全ルール・状態遷移・プロバイダー表示: 94 tests pass
+- 安全ルール・状態遷移・プロバイダー表示: 106 tests pass
 - ブラウザ一連操作: desktop / mobile、12 tests pass
   （モバイル専用2ケースはdesktop projectで意図的にskip）
 - Next.js production build: pass
@@ -103,6 +107,7 @@ npm audit --omit=dev
 - `docs/OPUS5_IMPLEMENTATION_PLAN.md`: Opus 5が作成した実装計画
 - `docs/OPUS5_FINAL_ACCEPTANCE.md`: Opus 5の最終PASS判定
 - `outputs/submission/open-door-tokyo-deck.pdf`: 提出用8ページPDF
+- `outputs/submission/open-door-tokyo-deck-ja.pdf`: 日本語版8ページPDF
 - `outputs/submission/open-door-tokyo-demo-final.mp4`: 47秒の最終デモ
   （実Qwen proof + 検証済み公開フロー）
 
@@ -110,16 +115,16 @@ npm audit --omit=dev
 
 ```text
 動画 / 代表フレーム / 音声
-  → Qwen: 観察事実・未確認項目
+  → Qwen: 観察事実・幅付き参考推定・未確認項目
   → Nosana: GPU証拠フレーム索引
   → 決定論ルール + GMI: 断定表現の監査
   → 店舗スタッフの測定・回答
   → ai&: 日英表現確認
   → Daytona: 隔離サンドボックス検査
   → 人が公開
-  → 証拠付き日英 Access Card + QR
+  → 画像付き来店前アクセス案内 + QR + 利用者向け地図
 ```
 
 プロダクトの原則は一つです。
 
-> We do not certify. We clarify.
+> 認定ではなく、判断材料を。

@@ -10,15 +10,14 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
           </span>
           <span>
             <strong>OPEN DOOR TOKYO</strong>
-            {!compact && <small>We do not certify. We clarify.</small>}
+            {!compact && <small>電話せず、行く前に判断できる。</small>}
           </span>
         </Link>
         <div className="header-meta">
-          <span className="event-label">AGENT FORGE · TOKYO</span>
-          <span className="prototype-label">LIVE PROTOTYPE</span>
+          <span className="event-label">東京発の来店前情報</span>
+          <span className="prototype-label">公開デモ</span>
         </div>
       </div>
     </header>
   );
 }
-
